@@ -167,6 +167,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
       let file;
       if (url.pathname === '/' || /^\/r\/[A-Z0-9]{6}$/.test(url.pathname)) file = path.join(ROOT, 'public/index.html');
       else if (url.pathname === '/world.mjs') file = path.join(ROOT, 'lib/world.mjs');
+      else if (url.pathname === '/settlements.mjs') file = path.join(ROOT, 'lib/settlements.mjs');
       else if (url.pathname === '/rulebook.md') file = path.join(ROOT, 'docs/rulebook.md');
       else if (['/app.js', '/style.css', '/favicon.svg'].includes(url.pathname)) file = path.join(ROOT, 'public', url.pathname.slice(1));
       else throw new GameError('파일을 찾을 수 없습니다.', 404);
