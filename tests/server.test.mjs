@@ -41,6 +41,14 @@ test('three-player API: authentication, private SSE, concurrent writes, persiste
   assert.equal(p.logs.filter(l=>l.message.startsWith('concurrent-')).length,12);
   assert.equal(p.logs.some(l=>l.message==='ONLY-GOD'),false);
   assert.equal(p.world.tiles.length,7);
+  const summary=(await request(prefix+'/summary',undefined,priest));
+  assert.equal(summary.status,200);assert.equal(summary.data.name,'동시 접속 세계');
+  assert.equal(summary.data.role,'priest');assert.equal(summary.data.width,60);assert.equal(summary.data.height,38);
+  assert.equal(summary.data.tribe,'여명 부족');
+  for(const field of ['world','knowledge','actions','logs','players','invite','seed','god','priest'])assert.equal(summary.data[field],undefined,field);
+  assert.equal((await request(prefix+'/summary')).status,401);
+  assert.equal((await request(prefix+'/summary',undefined,'wrong')).status,401);
+  assert.equal((await request('/api/rooms/ZZZZZZ/summary',undefined,gm)).status,404);
   const exported=(await request(prefix+'/export',undefined,gm)).data;
   assert.equal(exported.invite,undefined);assert.equal(JSON.stringify(exported).includes('tokenHash'),false);
   assert.equal((await request(prefix+'/export',undefined,god)).status,403);

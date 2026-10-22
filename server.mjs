@@ -112,7 +112,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
         await store.save(room);
         return json(201, {id,token:key,role:'gm',state:projectedState(room,'gm')});
       }
-      const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]{6})(?:\/(join|state|events|actions|export))?$/);
+      const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]{6})(?:\/(join|state|summary|events|actions|export))?$/);
       if (match) {
         const [, id, endpoint] = match;
         const room = store.rooms.get(id);
@@ -129,6 +129,11 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
           return json(200, { id, token: key, role: input.role, state: projectedState(store.rooms.get(id), input.role, online(id)) });
         }
         const role = authenticate(room, req);
+        if (endpoint === 'summary' && req.method === 'GET') return json(200, {
+          id:room.id, name:room.name, role, day:room.day, month:room.month, hour:room.hour || 0,
+          updatedAt:room.updatedAt, width:room.world.width, height:room.world.height,
+          tribe:room.world.tribes.find(t=>t.id===room.selectedTribe)?.name || null,
+        });
         if (endpoint === 'state' && req.method === 'GET') return json(200, projectedState(room, role, online(id)));
         if (endpoint === 'export' && req.method === 'GET') {
           if (role !== 'gm') throw new GameError('GM만 기록을 내보낼 수 있습니다.', 403);
