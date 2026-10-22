@@ -32,7 +32,12 @@ const icon = (name, size = 20) => {
 };
 let state = null, session = null, selected = null, tab = 'world', logTab = 'all', streamController = null, connected = false;
 let zoom = 1, mapView = null, pending = false;
-const sessions = () => { try { return JSON.parse(localStorage.getItem('civilization.sessions') || '[]'); } catch { return []; } };
+const sessions = () => {
+  try {
+    const values=JSON.parse(localStorage.getItem('civilization.sessions') || '[]');
+    return Array.isArray(values) ? values.filter(s=>s && /^[A-Z0-9]{6}$/.test(s.id) && ['gm','god','priest'].includes(s.role) && typeof s.token==='string').slice(0,30) : [];
+  } catch { return []; }
+};
 function remember(value) {
   session = value;
   const values = sessions().filter(s => !(s.id === value.id && s.role === value.role));
@@ -70,6 +75,11 @@ async function action(data, { close = true } = {}) {
 function setState(next) {
   if (state && next.revision < state.revision) return;
   state = next;
+  if (session?.id===next.id && session.role===next.role) {
+    const values=sessions();
+    const saved=values.find(s=>s.id===next.id && s.role===next.role);
+    if(saved){Object.assign(saved,{name:next.name,day:next.day,month:next.month,hour:next.hour,updatedAt:next.updatedAt,width:next.world.width,height:next.world.height});localStorage.setItem('civilization.sessions',JSON.stringify(values));}
+  }
   if (!selected) selected = next.priest?.tileId || next.tribes.find(t => t.id === next.selectedTribe)?.tileId || next.world.tiles.find(t => t.settlementId)?.id || next.world.tiles[0]?.id;
   renderGame();
 }
@@ -105,6 +115,7 @@ function updateConnection() {
 }
 function brand() { return `<a href="/" class="brand"><span class="brand-mark">✧</span><span>신들의 문명<small>CHRONICLES OF DIVINITY</small></span></a>`; }
 function showModal(title, content, subtitle = '') {
+  dialog.classList.remove('saved-games-dialog');
   dialog.innerHTML = `<div class="modal-heading"><div><span class="eyebrow">CHRONICLES OF DIVINITY</span><h2>${esc(title)}</h2>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}</div><button class="icon-button" data-do="close" aria-label="닫기">${icon('close')}</button></div>${content}`;
   if (!dialog.open) dialog.showModal();
 }
@@ -125,7 +136,7 @@ function renderLanding() {
     <main class="landing-main"><div class="landing-copy"><div class="eyebrow"><span class="tiny-line"></span> THREE VOICES. ONE CIVILIZATION.</div>
       <h1>당신의 한 수가,<br>한 문명의 <em>신화가 된다.</em></h1>
       <p class="landing-description">세계를 엮는 GM, 기적을 일으키는 신,<br>그리고 대지를 걷는 신관.<br>서로 다른 시선으로, 하나의 문명을 써 내려가세요.</p>
-      <div class="landing-cta"><button class="button primary large" data-do="create">새로운 세계 만들기 ${icon('arrow')}</button><button class="button subtle large" data-do="join">초대받은 세계로</button><button class="button outline large" data-do="import">기록 불러오기</button></div>
+      <div class="landing-cta"><button class="button primary large" data-do="saved-games">저장된 게임 이어하기</button><button class="button outline large" data-do="create">새로운 세계 만들기 ${icon('arrow')}</button><button class="button subtle large" data-do="join">초대받은 세계로</button><button class="button outline large" data-do="import">기록 불러오기</button></div>
       <div class="landing-facts"><span><i></i> 3인 실시간 협동</span><span>시드 기반 육각 세계</span><span>자동 저장</span></div>
     </div><div class="landing-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="art-star star-a">✧</span><span class="art-star star-b">✦</span><div class="preview-map">${renderMap({ width: preview.width, height: preview.height, tiles: preview.tiles }, true)}</div><div class="art-caption"><span class="gold-dot"></span>이름 없는 세계, 아직 쓰이지 않은 이야기<small>WORLD ATLAS / SEED: CHRONICLES-DAWN</small></div><div class="coordinate">N 37° 24′<br>E 126° 58′</div></div></main>
     <section class="roles-intro"><div class="intro-label"><span class="eyebrow">THE THREE ROLES</span><h2>같은 세계,<br>다른 가능성.</h2></div>${[
@@ -133,10 +144,51 @@ function renderLanding() {
       ['god', '하늘 위의 의지', '부족을 선택하고 계시와 기적으로 문명의 운명에 개입합니다.'],
       ['priest', '대지 위의 개척자', '미지의 땅을 탐험하고 연구하며 부족의 내일을 일궈냅니다.'],
     ].map(([r, title, description]) => `<article class="role-intro"><span class="role-symbol ${r}">${ROLE_ICON[r]}</span><div class="role-meta">${ROLE[r]} <span>${r.toUpperCase()}</span></div><h3>${title}</h3><p>${description}</p></article>`).join('')}</section>
-    ${recent.length ? `<section class="recent"><div class="section-heading"><h2>이어 쓰는 연대기</h2><span>이 브라우저에 보관된 접속 정보</span></div><div class="recent-grid">${recent.slice(0, 6).map((s, i) => `<button class="recent-card" data-do="resume" data-index="${i}"><span class="role-symbol ${s.role}">${ROLE_ICON[s.role]}</span><div><strong>${esc(s.name || s.id)}</strong><small>${ROLE[s.role]} · ${s.id}</small></div>${icon('arrow', 18)}</button>`).join('')}</div></section>` : ''}
+    ${recent.length ? `<section class="recent"><div class="section-heading"><h2>이어 쓰는 연대기</h2><button class="text-button" data-do="saved-games">저장된 게임 모두 보기 →</button></div><div class="recent-grid">${recent.slice(0, 6).map((s, i) => `<button class="recent-card" data-do="resume" data-index="${i}"><span class="role-symbol ${s.role}">${ROLE_ICON[s.role]}</span><div><strong>${esc(s.name || s.id)}</strong><small>${ROLE[s.role]} · ${s.id}</small></div>${icon('arrow', 18)}</button>`).join('')}</div></section>` : ''}
     <footer class="landing-footer"><span>✧ 신들의 문명 TRPG</span><span>함께 만든 선택이, 함께 기억할 역사가 됩니다.</span><span>PLAYTEST 0.1</span></footer></div>`;
   const route = location.pathname.match(/^\/r\/([A-Z0-9]{6})$/);
   if (route) showJoin(route[1]);
+}
+let savePicker = null;
+const savedKey = s => `${s.id}:${s.role}`;
+const saveTime = value => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString('ko-KR') : '아직 확인되지 않음';
+function renderSavePicker() {
+  const picker=savePicker;
+  if(!picker || !dialog.open || !dialog.classList.contains('saved-games-dialog'))return;
+  const selected=picker.entries.find(s=>savedKey(s)===picker.selected);
+  const list=dialog.querySelector('#saved-game-list'), detail=dialog.querySelector('#saved-game-detail');
+  if(!picker.entries.length){
+    list.innerHTML='<div class="empty-state"><p>이 브라우저에 저장된 게임이 없습니다.<br>새 세계를 만들거나 기록 JSON을 불러오세요.</p></div>';
+    detail.innerHTML='<div class="empty-state"><p>한 번 참여한 세계는 자동으로 여기에 표시됩니다.</p><button class="button outline" data-do="import">기록 불러오기</button><button class="button primary" data-do="create">새로운 세계 만들기</button></div>';
+    return;
+  }
+  list.innerHTML=picker.entries.map(s=>`<button class="saved-game-option ${savedKey(s)===picker.selected?'selected':''}" data-do="select-save" data-key="${savedKey(s)}" aria-pressed="${savedKey(s)===picker.selected}"><span class="role-symbol ${s.role}">${ROLE_ICON[s.role]}</span><span class="saved-game-label"><strong>${esc(s.name || s.id)}</strong><small>${ROLE[s.role]} · ${s.id}</small><small>${s.month?`${s.month}개월 차 · ${((s.day-1)%30)+1}일`:'진행 정보 확인 중'}</small></span><span class="saved-game-status ${s.status}">${s.status==='ready'?'이어하기 가능':s.status==='checking'?'확인 중':'접속 확인 필요'}</span></button>`).join('');
+  if(!selected)return;
+  const s=selected;
+  detail.innerHTML=`<span class="eyebrow">SAVED CAMPAIGN</span><h3>${esc(s.name || s.id)}</h3><span class="tag">${ROLE[s.role]} · ${s.id}</span><dl class="save-details"><div><dt>게임 날짜</dt><dd>${s.month?`${s.month}개월 차 · ${((s.day-1)%30)+1}일${s.hour?` ${s.hour}시`:''}`:'확인 중'}</dd></div><div><dt>마지막 자동 저장</dt><dd>${esc(saveTime(s.updatedAt))}</dd></div><div><dt>지도</dt><dd>${s.width?`${s.width} × ${s.height} · ${num(s.width*s.height)}타일`:'확인 중'}</dd></div>${s.tribe?`<div><dt>시작 부족</dt><dd>${esc(s.tribe)}</dd></div>`:''}</dl><p class="save-message" role="status">${esc(s.status==='checking'?'서버의 저장본과 접속 권한을 확인하고 있습니다.':s.status==='ready'?'마지막 자동 저장 시점부터 이어갑니다.':s.message || '서버에 연결하지 못했습니다. 잠시 후 다시 확인하세요.')}</p><button class="button primary full" data-do="continue-save" ${s.status!=='ready' || picker.entering?'disabled':''}>${picker.entering?'입장 중…':'선택한 세계 이어하기'}</button>${s.status==='unavailable'?'<div class="save-recovery"><button class="button outline" data-do="saved-games">다시 확인</button><button class="text-button" data-do="import">기록 JSON으로 복원</button></div>':''}`;
+}
+async function showSavedGames() {
+  const picker={entries:sessions().map(s=>({...s,status:'checking'})),selected:null,entering:false};
+  picker.selected=picker.entries[0]?savedKey(picker.entries[0]):null;
+  savePicker=picker;
+  showModal('저장된 게임 선택', '<p class="helper">같은 브라우저에서 참여한 세계를 선택하세요. 서버에 저장된 최신 진행 상황을 확인합니다.</p><div class="save-picker"><div id="saved-game-list" class="saved-game-list" aria-label="저장된 세계 목록"></div><section id="saved-game-detail" class="saved-game-detail" aria-label="선택한 세계 정보"></section></div>');
+  dialog.classList.add('saved-games-dialog');
+  renderSavePicker();
+  await Promise.all(picker.entries.map(async saved=>{
+    try {
+      const response=await fetch(`/api/rooms/${saved.id}/summary`,{headers:{Authorization:`Bearer ${saved.token}`}});
+      if(response.ok){
+        const summary=await response.json();
+        Object.assign(saved,summary,{status:'ready'});
+        const cached=sessions();const entry=cached.find(s=>savedKey(s)===savedKey(saved));
+        if(entry){Object.assign(entry,summary);localStorage.setItem('civilization.sessions',JSON.stringify(cached));}
+      }else{
+        saved.status='unavailable';
+        saved.message=response.status===404?'이 서버에 저장된 세계가 없습니다. 이전 게임 주소를 확인하거나 기록 JSON으로 복원하세요.':response.status===401?'이 역할의 접속 권한이 바뀌었습니다. GM에게 새 초대 링크를 요청하세요.':'저장본을 확인하지 못했습니다. 잠시 후 다시 확인하세요.';
+      }
+    }catch {saved.status='unavailable';saved.message='서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도하세요.';}
+    if(savePicker===picker)renderSavePicker();
+  }));
 }
 function showCreate() {
   showModal('새로운 세계 만들기', `<form id="create-form">${input('세계의 이름', 'name', '', 'required maxlength="50" placeholder="예: 여명이 머무는 땅"')}${input('GM 이름', 'playerName', '', 'required maxlength="24" placeholder="당신을 어떻게 부를까요?"')}${input('세계 생성 시드 <span class="muted">선택</span>', 'seed', '', 'maxlength="80" placeholder="비워 두면 새로운 세계가 만들어집니다"')}<div class="notice">${icon('people')}<p>당신은 GM으로 입장합니다. 방을 만든 뒤 신과 신관에게 각각 초대 링크를 보내세요.</p></div>${submit('세계의 첫 장 열기')}</form>`, 'GM 1명, 신 1명, 신관 1명. 이야기가 시작됩니다.');
@@ -149,15 +201,15 @@ function showJoin(id = '') {
   showModal('초대받은 세계로', `<form id="join-form">${input('초대 링크', 'link', id ? `${location.origin}/r/${id}${location.hash}` : '', 'required placeholder="GM에게 받은 초대 링크를 붙여넣으세요"')}<label class="field">참여할 역할<div class="role-choice">${['god', 'priest'].map(r => `<label><input type="radio" name="role" value="${r}" ${hash.get('role') === r || !hash.get('role') && r === 'god' ? 'checked' : ''}><span>${ROLE_ICON[r]} ${ROLE[r]}</span></label>`).join('')}</div></label>${input('플레이어 이름', 'name', '', 'required maxlength="24" placeholder="함께할 이들에게 보여줄 이름"')}${submit('이야기에 합류하기')}<p class="form-footnote">접속 정보는 이 브라우저에 저장됩니다. 개인 초대 링크는 신뢰하는 플레이어에게만 공유하세요.</p></form>`);
 }
 async function enter(result, name) {
-  remember({ id: result.id, role: result.role, token: result.token, name: name || result.state.name });
+  remember({ id: result.id, role: result.role, token: result.token, name: result.state.name, playerName: name || result.state.players[result.role]?.name });
   history.replaceState({}, '', `/r/${result.id}`);
   selected = null; zoom = 1; mapView = null; tab = 'world';
   state = null; setState(result.state); dialog.close(); connect();
 }
 async function resume(s) {
   session = s;
-  try { const next = await api(`/api/rooms/${s.id}/state`); await enter({ ...s, state: next }, s.name); }
-  catch (e) { toast(e.message, true); session = null; }
+  try { const next = await api(`/api/rooms/${s.id}/state`); await enter({ ...s, state: next }, s.playerName); return true; }
+  catch (e) { toast(e.message, true); session = null; return false; }
 }
 
 function hexPoint(x, y, size = 25) {
@@ -209,7 +261,7 @@ function renderGame() {
       <button class="button outline invite-button" data-do="${state.role === 'gm' ? 'invite' : 'connection-info'}">${icon(state.role === 'gm' ? 'link' : 'people', 17)}${state.role === 'gm' ? '플레이어 초대' : '접속 안내'}</button>
       <div class="sidebar-bottom"><div class="quiet-note">“아직 어떤 역사도<br>쓰이지 않은 땅.”<span>THE FIRST AGE</span></div><a href="/rulebook.md" target="_blank" rel="noopener" class="nav-item">${icon('book', 17)}룰북 v0.4 ${icon('arrow', 14)}</a><button data-do="home" class="nav-item">${icon('home', 17)}시작 화면으로</button></div>
     </aside>
-    <div class="game-main"><header class="game-header"><div class="breadcrumb">우리의 연대기 <span>/</span> <strong>${{world:'세계 지도',civilization:'문명 관리',characters:'신과 신관',journal:'연대기'}[tab]}</strong></div><div class="header-right">${state.role === 'gm' ? `<button class="icon-button mobile-invite" data-do="invite" aria-label="플레이어 초대">${icon('link',16)}</button>` : ''}<span id="connection" class="connection ${connected ? '' : 'offline'}"><i></i>${connected ? '실시간 연결됨' : '연결 중…'}</span><span class="header-role ${state.role}">${ROLE_ICON[state.role]} ${ROLE[state.role]}의 시선</span></div></header>
+    <div class="game-main"><header class="game-header"><div class="breadcrumb">우리의 연대기 <span>/</span> <strong>${{world:'세계 지도',civilization:'문명 관리',characters:'신과 신관',journal:'연대기'}[tab]}</strong></div><div class="header-right"><button class="icon-button mobile-home-button" data-do="home" aria-label="시작 화면으로">${icon('home',16)}</button>${state.role === 'gm' ? `<button class="icon-button mobile-invite" data-do="invite" aria-label="플레이어 초대">${icon('link',16)}</button>` : ''}<span id="connection" class="connection ${connected ? '' : 'offline'}"><i></i>${connected ? '실시간 연결됨' : '연결 중…'}</span><span class="header-role ${state.role}">${ROLE_ICON[state.role]} ${ROLE[state.role]}의 시선</span></div></header>
       <div class="game-content"><div class="page-heading"><div><div class="eyebrow">${{world:'THE KNOWN WORLD',civilization:'A CIVILIZATION IN THE MAKING',characters:'THE DIVINE & THE MORTAL',journal:'THE LIVING CHRONICLE'}[tab]}</div><h1>${{world:'미지의 땅, 우리의 세계',civilization:t?.name || '문명의 첫걸음',characters:'하늘의 의지와 대지의 목소리',journal:'선택이 역사가 되는 순간'}[tab]}</h1><p>${{world:'안개 너머의 가능성을 발견하고, 문명의 첫 장을 열어보세요.',civilization:'작은 공동체의 오늘이, 내일의 문명이 됩니다.',characters:'서로 다른 힘으로, 같은 미래를 향해.',journal:'세 사람이 함께 남기는, 단 하나의 이야기.'}[tab]}</p></div><div class="date-badge">${icon('sun', 22)}<div><strong>${dateLabel()}</strong><small>여명의 시대</small></div></div></div>
       ${renderSetupBanner()}
       <div class="stats-strip">${stat(icon('people'), '부족 인구', t ? `${num(t.population)}<small>명</small>` : '—', t ? t.race : '시작 부족 미선택')}${stat(icon('sun'), '신앙', state.god?.faith !== undefined ? `${num(state.god.faith)}<small>점</small>` : '—', state.god ? `${esc(state.god.realm)}의 소영역` : '신의 탄생을 기다리는 중')}${stat(icon('food'), '보유 식량', t ? `${num(Object.values(t.food).reduce((a,b) => a+b,0))}<small>단위</small>` : '—', t ? `월간 소비 ${num(t.population * t.consumption)}` : '재고 미확인')}${stat(icon('compass'), '발견한 세계', `${state.role === 'gm' ? '100' : (state.world.tiles.length / (state.world.width * state.world.height) * 100).toFixed(0)}<small>%</small>`, `${state.world.tiles.length} / ${state.world.width * state.world.height} 타일`)}</div>
@@ -416,12 +468,19 @@ document.addEventListener('click', async event => {
   if(tile){selected=tile.dataset.tile;renderGame();return;}
   const element=event.target.closest('[data-do]');if(!element)return;
   const command=element.dataset.do;
-  const handlers={ create:showCreate,import:showImport,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
+  const handlers={ create:showCreate,'saved-games':showSavedGames,import:showImport,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
   if(handlers[command]){handlers[command]();return;}
   if(command==='close')dialog.close();
   if(command==='tab'){tab=element.dataset.tab;renderGame();}
   if(command==='log-tab'){logTab=element.dataset.tab;renderGame();}
   if(command==='resume')await resume(sessions()[Number(element.dataset.index)]);
+  if(command==='select-save' && savePicker){savePicker.selected=element.dataset.key;renderSavePicker();}
+  if(command==='continue-save' && savePicker && !savePicker.entering){
+    const picker=savePicker,saved=picker.entries.find(s=>savedKey(s)===picker.selected);
+    if(saved?.status!=='ready')return;
+    picker.entering=true;renderSavePicker();
+    if(!await resume(saved)){picker.entering=false;saved.status='unavailable';saved.message='입장하지 못했습니다. 저장본과 접속 권한을 다시 확인하세요.';renderSavePicker();}
+  }
   if(command==='home'){state=null;selected=null;history.pushState({},'','/');renderLanding();}
   if(command==='explore')await action({type:'explore',tileId:selected});
   if(command==='reveal')await action({type:'reveal',role:element.dataset.role,tileId:selected});
