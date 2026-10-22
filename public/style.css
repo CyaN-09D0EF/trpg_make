@@ -19,3 +19,28 @@ dialog{border:1px solid #e4e0d5;border-radius:12px;max-width:min(650px,92vw);wid
 .mobile-invite{display:none}.edit-tile-button{font-size:8px;justify-content:center;width:100%;margin-top:10px}
 @media(max-width:720px){.mobile-invite{display:flex;color:#a08a60;width:24px;height:25px}.header-right{gap:9px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Technology graph: the scroll area contains the graph on narrow screens. */
+.technology-card{min-width:0;grid-column:1/-1}
+.tech-tree-scroll{width:100%;max-width:100%;max-height:780px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:linear-gradient(135deg,#f8f6f0,#f0f3f2);overscroll-behavior:contain}
+.tech-tree-scroll:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.tech-tree-board{position:relative;isolation:isolate}
+.tech-connections{position:absolute;inset:0;pointer-events:none}
+.tech-connections path{fill:none;stroke:#c9ccca;stroke-width:2}
+.tech-connections path.unlocked{stroke:var(--green);stroke-width:3}
+.tech-node{position:absolute;width:210px;height:86px}
+.tech-node:hover,.tech-node:focus-within,.tech-node.show-description{z-index:5}
+.tech-node-button{width:100%;height:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;padding:10px 16px;border:1px solid #d2d6d3;border-radius:10px;background:#fff;box-shadow:0 3px 8px #17251d0a;text-align:left}
+.tech-node-button small{font-size:10px;color:#68756e}
+.tech-node-button strong{font-size:15px}
+.tech-node.locked .tech-node-button{background:#f2f1ed;color:#686e6a;border-style:dashed}
+.tech-node.unlocked .tech-node-button{border-left:4px solid var(--green)}
+.tech-node-button:hover,.tech-node-button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.tech-progress{display:flex;gap:4px;margin-top:4px}
+.tech-progress i{width:25px;height:3px;background:#e2e5e1;border-radius:2px}
+.tech-progress i.done{background:var(--green)}
+.tech-tooltip{display:none;position:absolute;top:92px;left:0;width:210px;padding:14px 16px;border-radius:10px;background:var(--navy);color:#fff;box-shadow:0 8px 24px #0003;font-size:12px;pointer-events:none}
+.tech-tooltip p{margin:7px 0;line-height:1.7}
+.tech-tooltip small{color:#d8c69f}
+.tech-node:hover .tech-tooltip,.tech-node:focus-within .tech-tooltip,.tech-node.show-description .tech-tooltip{display:block}
+@media(max-width:600px){.tech-tree-scroll{max-height:580px}.technology-card .section-heading{gap:10px;flex-wrap:wrap}}

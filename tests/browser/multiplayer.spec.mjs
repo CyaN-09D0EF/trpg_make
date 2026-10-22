@@ -57,6 +57,40 @@ test('three independent browsers play one persistent campaign with private visio
   await gm.getByRole('button',{name:'플레이어 초대',exact:true}).click();
   await expect(gm.getByLabel('신 초대 링크',{exact:true})).toBeVisible();
   await gm.getByRole('button',{name:'닫기',exact:true}).click();
+  // The catalog is visible to the GM; only discoveries reach either player.
+  await gm.setViewportSize({width:1440,height:1100});
+  await gm.getByRole('button',{name:/문명 관리/}).click();
+  const tree = gm.locator('.tech-tree-board');
+  await expect(tree.locator('.tech-node')).toHaveCount(67);
+  // Exact data-name avoids selecting later technologies containing the same word.
+  const sailingNode = tree.locator('[data-name="항해"]');
+  await sailingNode.hover();
+  await expect(sailingNode.locator('..').getByRole('tooltip')).toContainText('호수와 연안');
+  await sailingNode.click();
+  await gm.getByLabel('발전 단계').selectOption('1');
+  await gm.getByRole('button',{name:'부족의 지식 기록'}).click();
+  for (const player of [god,priest]) {
+    await player.getByRole('button',{name:/문명 관리/}).click();
+    await expect(player.locator('.tech-node')).toHaveCount(1);
+    await expect(player.locator('.tech-node')).toContainText('항해');
+    await expect(player.locator('.tech-node')).not.toContainText('조선');
+    await expect(player.getByRole('button',{name:'기술 기록 +'})).toHaveCount(0);
+  }
+  await tree.locator('[data-name="조선"]').click();
+  await expect(gm.getByLabel('기술 이름')).toHaveValue('조선');
+  await gm.getByLabel('발전 단계').selectOption('2');
+  await gm.getByRole('button',{name:'부족의 지식 기록'}).click();
+  for (const player of [god,priest]) {
+    await expect(player.locator('.tech-node')).toHaveCount(2);
+    await expect(player.locator('.tech-connections path')).toHaveCount(1);
+  }
+  await priest.locator('[data-name="조선"]').click();
+  await expect(priest.locator('[data-name="조선"]').locator('..').getByRole('tooltip')).toContainText('선박');
+  expect(await priest.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const tip = await priest.locator('[data-name="조선"]').locator('..').getByRole('tooltip').boundingBox();
+  expect(tip.x + tip.width).toBeLessThanOrEqual(390);
+  await gm.screenshot({path:testInfo.outputPath('technology-tree-gm.png'),fullPage:true});
+  await priest.screenshot({path:testInfo.outputPath('technology-tree-player-mobile.png'),fullPage:true});
   expect(errors).toEqual([]);
   await godContext.close();await priestContext.close();
 });

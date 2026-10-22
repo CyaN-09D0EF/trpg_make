@@ -243,7 +243,7 @@ function tilePanel() {
   const feature = FEATURES[tile.feature]?.name;
   const elevation = {flat:'평지',hill:'언덕',mountain:'산'}[tile.elevation];
   const canMove = state.role === 'priest' && state.priest && neighbors(state.world.tiles.find(t=>t.id === state.priest.tileId) || {x:0,y:0}).includes(tile.id);
-  return `<div class="tile-illustration ${tile.terrain}"><span class="tile-coord">TILE ${tile.x.toString().padStart(2,'0')} / ${tile.y.toString().padStart(2,'0')}</span><div class="mini-landscape"><span>${tile.elevation === 'mountain' ? '♧' : feature?.includes('숲') || tile.feature === 'forest' ? '♠ ♠' : ['ocean','coast','lake'].includes(tile.terrain) ? '≈' : '⌁'}</span></div><div class="tile-art-title">${TERRAINS[tile.terrain].name}${feature ? ` · ${feature}` : ''}<small>${elevation}${tile.river.length ? ' · 강 인접' : ''}</small></div></div><div class="tile-info"><div class="section-tiny">선택한 타일 <span>${tile.id}</span></div><h3>${esc(tribe?.name || `${TERRAINS[tile.terrain].name} ${feature || elevation}`)}</h3><div class="tile-tags"><span>${TERRAINS[tile.terrain].name}</span>${feature ? `<span>${feature}</span>` : ''}<span>${elevation}</span></div><div class="tile-detail"><span>풍부한 자원</span><strong>${esc(tile.resource || '발견되지 않음')}</strong></div><div class="tile-detail"><span>동물 개체군</span><strong>${num(tile.wildlife)}</strong></div><div class="tile-detail"><span>식물 자원량</span><strong>${num(tile.plants)}</strong></div>${tile.ruin ? '<div class="tile-detail"><span>발견</span><strong class="gold-text">고대 유적</strong></div>' : ''}<p class="observation">${icon('eye',14)}${tile.observedDay === state.day ? '현재 관찰 정보' : `${tile.observedDay}일 차 관찰 · 오래된 정보일 수 있음`}</p>${canMove ? '<button class="button primary full" data-do="explore">이곳으로 탐험하기 →</button>' : ''}${state.role === 'gm' ? '<div class="button-pair"><button class="button outline small" data-do="reveal" data-role="god">신에게 공개</button><button class="button outline small" data-do="reveal" data-role="priest">신관에게 공개</button></div><button class="text-button edit-tile-button" data-do="edit-tile">타일 환경 편집 ↗</button>' : ''}</div>`;
+  return `<div class="tile-illustration ${tile.terrain}"><span class="tile-coord">TILE ${tile.x.toString().padStart(2,'0')} / ${tile.y.toString().padStart(2,'0')}</span><div class="mini-landscape"><span>${tile.elevation === 'mountain' ? '♧' : feature?.includes('숲') || tile.feature === 'forest' ? '♠ ♠' : ['ocean','coast','lake'].includes(tile.terrain) ? '≈' : '⌁'}</span></div><div class="tile-art-title">${TERRAINS[tile.terrain].name}${feature ? ` · ${feature}` : ''}<small>${elevation}${tile.river.length ? ' · 강 인접' : ''}</small></div></div><div class="tile-info"><div class="section-tiny">선택한 타일 <span>${tile.id}</span></div><h3>${esc(tribe?.name || `${TERRAINS[tile.terrain].name} ${feature || elevation}`)}</h3><div class="tile-tags"><span>${TERRAINS[tile.terrain].name}</span>${feature ? `<span>${feature}</span>` : ''}<span>${elevation}</span></div><div class="tile-detail"><span>풍부한 자원</span><strong>${esc(tile.resource || '발견되지 않음')}</strong></div><div class="tile-detail"><span>동물 개체군</span><strong>${num(tile.wildlife)}</strong></div><div class="tile-detail"><span>식물 자원량</span><strong>${num(tile.plants)}</strong></div>${tile.ruin ? '<div class="tile-detail"><span>발견</span><strong class="gold-text">고대 유적</strong></div>' : ''}<p class="observation">${icon('eye',14)}${tile.observedDay === state.day ? '현재 관찰 정보' : `${tile.observedDay}일 차 관찰 · 오래된 정보일 수 있음`}</p>${canMove ? '<button class="button primary full" data-do="explore">이곳으로 탐험하기 →</button>' : ''}${state.role === 'gm' ? '<div class="button-pair"><button class="button outline small" data-do="reveal" data-role="god">신에게 공개</button><button class="button outline small" data-do="reveal" data-role="priest">신관에게 공개</button></div><button class="text-button" data-do="gm-move">신관 이동 판정 ↗</button><button class="text-button edit-tile-button" data-do="edit-tile">타일 환경 편집 ↗</button>' : ''}</div>`;
 }
 function visibleLogs() {
   return state.logs.filter(l => logTab === 'all' || logTab === 'chat' && l.kind === 'chat' || logTab === 'story' && l.kind !== 'chat');
@@ -268,7 +268,31 @@ function civilizationPage() {
   const total = Object.values(t.food).reduce((a,b)=>a+b,0), consumption = t.population*t.consumption;
   return `<div class="civilization-grid"><section class="card padded"><div class="section-heading"><h2>${icon('home')} ${esc(t.name)}</h2><span class="tag">야영지 · 시험 기준</span></div><p class="description">${esc(t.description)}</p><div class="info-grid">${[['종족',t.race],['인구',`${num(t.population)}명`],['신도',`${num(t.followers)}명`],['월간 기본 신앙',`${num(t.followers*.5)}점`],['종족별 소비',`${t.consumption} / 명 / 월`],['식량 여유',`${(total/consumption).toFixed(1)}개월`]].map(([label,value])=>`<div><small>${label}</small><strong>${value}</strong></div>`).join('')}</div><div class="notice">${icon('eye')}<p>출생·사망·부족 확장과 시설 효과는 GM이 판정합니다. 시작 부족 선택이 곧 전원 개종을 의미하지는 않습니다.</p></div>${state.role==='gm'?'<button class="button outline" data-do="adjust">부족 수치 조정</button>':''}</section>
   <section class="card padded"><div class="section-heading"><h2>${icon('food')} 식량과 노동</h2>${['gm','priest'].includes(state.role)?'<button class="text-button" data-do="workers">노동 배치 →</button>':''}</div><div class="food-stocks">${[['meat','고기','♧'],['grain','곡물','♨'],['fruit','과일','❧']].map(([key,name,symbol])=>`<div><span>${symbol}</span><strong>${num(t.food[key])}</strong><small>${name}</small></div>`).join('')}</div><div class="labor-list">${Object.entries(ACTIVITY).map(([key,name])=>`<div><span>${name}</span><div class="labor-bar"><i style="width:${t.workers[key]/t.population*100}%"></i></div><strong>${t.workers[key]}명</strong></div>`).join('')}</div><p class="helper">노동자 1인 ${state.settings.workerOutput} · 지형 한도 ×${state.settings.capacityScale} (시험용)<br>생산권: 정착지와 인접 6타일. 재고는 자동 저장되며 GM 시간 진행 시 정산됩니다.</p></section>
-  <section class="card padded technology-card"><div class="section-heading"><div><span class="eyebrow">KNOWLEDGE & DISCOVERY</span><h2>기술의 씨앗</h2></div>${state.role==='gm'?'<button class="button outline small" data-do="technology">기술 기록 +</button>':''}</div>${t.technologies.length ? `<div class="tech-grid">${t.technologies.map(tech=>`<article class="tech-item"><span class="tech-icon">◇</span><h3>${esc(tech.name)}</h3><div class="tech-steps">${STAGES.map((name,i)=>`<span class="${i<=tech.stage?'done':''}" title="${name}"></span>`).join('')}</div><p>${STAGES[tech.stage]}</p></article>`).join('')}</div>` : '<div class="empty-state">'+icon('feather',30)+'<p>아직 기록된 기술이 없습니다.<br>연구와 경험을 쌓고, GM이 진척을 기록하세요.</p></div>'}<p class="helper">미발견 → 발견 → 실험 → 실용화 → 보급. 기술은 포인트 구매나 발견만으로 자동 보급되지 않습니다.</p></section></div>`;
+  <section class="card padded technology-card"><div class="section-heading"><div><span class="eyebrow">KNOWLEDGE & DISCOVERY</span><h2>기술의 씨앗</h2></div>${state.role==='gm'?'<button class="button outline small" data-do="technology">기술 기록 +</button>':''}</div><p class="helper">${state.role==='gm'?'전체 기술 트리 · 카드를 누르면 발전 단계를 기록합니다.':'해금된 기술만 표시합니다. GM이 발견 이상으로 기록하면 해금됩니다.'}<br>카드에 커서를 올리거나 초점을 맞추면 설명을 볼 수 있습니다. 모바일에서는 카드를 누르세요.</p>${renderTechnologyTree()}<p class="helper">문명 VI에서 착안한 TRPG용 재구성 · 선행 기술은 연구 방향을 안내합니다. 발견 → 실험 → 실용화 → 보급은 GM이 판정하며 효과는 자동 적용되지 않습니다.</p></section></div>`;
+}
+function renderTechnologyTree() {
+  const techs = state.technologyTree || [];
+  if (!techs.length) return '<div class="empty-state"><p>아직 해금된 기술이 없습니다.<br>연구와 경험을 쌓고 GM의 발견 판정을 기다리세요.</p></div>';
+  const byName = new Map(techs.map(t => [t.name, t]));
+  const depths = new Map();
+  function depth(t) {
+    if (!depths.has(t.name)) depths.set(t.name, t.prerequisites.length ? 1 + Math.max(...t.prerequisites.map(n=>depth(byName.get(n)))) : 0);
+    return depths.get(t.name);
+  }
+  const lanes = new Map();
+  const nodes = techs.map((t,i) => {
+    const col = depth(t), row = lanes.get(col) || 0;
+    lanes.set(col, row+1);
+    return {...t, index:i, x:col*270+24, y:row*120+42};
+  });
+  const positions = new Map(nodes.map(t=>[t.name,t]));
+  const width = (Math.max(...nodes.map(t=>depths.get(t.name)))+1)*270+24;
+  const height = Math.max(...lanes.values())*120+230;
+  const lines = nodes.flatMap(t=>t.prerequisites.map(n=>{
+    const p=positions.get(n);
+    return `<path class="${t.stage>0&&p.stage>0?'unlocked':''}" d="M${p.x+210},${p.y+42} C${p.x+240},${p.y+42} ${t.x-30},${t.y+42} ${t.x},${t.y+42}"/>`;
+  })).join('');
+  return `<div class="tech-tree-scroll" tabindex="0" aria-label="기술 트리, 좌우로 스크롤"><div class="tech-tree-board" style="width:${width}px;height:${height}px"><svg class="tech-connections" width="${width}" height="${height}" aria-hidden="true">${lines}</svg>${nodes.map(t=>`<div class="tech-node ${t.stage>0?'unlocked':'locked'}" style="left:${t.x}px;top:${t.y}px"><button class="tech-node-button" data-do="tech-node" data-name="${esc(t.name)}" aria-describedby="tech-tip-${t.index}"><small>${esc(t.era)} · ${STAGES[t.stage]}</small><strong>${esc(t.name)}</strong><span class="tech-progress" aria-hidden="true">${STAGES.slice(1).map((_,i)=>`<i class="${i<t.stage?'done':''}"></i>`).join('')}</span></button><div class="tech-tooltip" role="tooltip" id="tech-tip-${t.index}"><strong>${esc(t.name)}</strong><p>${esc(t.description)}</p><small>${t.prerequisites.length?`선행 기술: ${t.prerequisites.map(esc).join(', ')}`:'표시된 선행 기술 없음'}</small></div></div>`).join('')}</div></div>`;
 }
 function charactersPage() {
   return `<div class="character-grid"><section class="card character-sheet"><div class="character-banner god"><span>✦</span><small>THE DIVINE</small><h2>${esc(state.god?.name || '이름 없는 신')}</h2><p>${state.god ? `${esc(state.god.realm)}의 소영역` : '아직 세계에 모습을 드러내지 않았습니다.'}</p></div><div class="padded">${state.god ? `<div class="info-grid"><div><small>신성 레벨</small><strong>${state.god.level === undefined ? '비공개' : state.god.level}</strong></div><div><small>신앙</small><strong>${state.god.faith === undefined ? '비공개' : num(state.god.faith)}</strong></div></div>${state.god.appearance ? `<p class="description">${esc(state.god.appearance)} · ${esc(state.god.disposition)}</p>` : ''}<h3>신의 권능</h3><div class="tile-tags">${['기적','축복','강신','계시','피조물 창조'].map(p=>`<span>${p}</span>`).join('')}</div><p class="helper">권능 비용은 종류와 규모에 따라 GM이 판정합니다.<br>신성 레벨과 신앙은 별개의 수치입니다.</p>${state.role==='god'?'<button class="button primary" data-do="request">권능 사용 제안하기 →</button>':''}` : `<p class="description">신 플레이어가 이름, 외형, 성향과 초기 소영역 하나를 정합니다. 신성 레벨 1, 신앙 10으로 시작합니다.</p>${state.role==='god'?'<button class="button primary" data-do="create-god">신 생성하기 →</button>':''}`}</div></section>
@@ -327,8 +351,17 @@ function showAdjust() {
 function showSettings() {
   showModal('시험 규칙 설정', `<form data-action="settings"><span class="playtest-label">미확정 수치 · 룰북의 확정 규칙을 변경하지 않습니다</span><div class="two-inputs">${input('노동자 1인 월간 생산량','workerOutput',state.settings.workerOutput,'type="number" min="1" max="1000" required')}${input('원문 지형 생산 한도 배율','capacityScale',state.settings.capacityScale,'type="number" min="1" max="20" required')}${input('자연 회복 계수 (0~1)','recoveryRate',state.settings.recoveryRate,'type="number" min="0" max="1" step="0.01" required')}${input('월간 사건 확률 (%)','eventChance',state.settings.eventChance,'type="number" min="0" max="100" required')}</div><p class="helper">소비량 15·30·60은 고정입니다. 한 달은 시험판에서 30일로 계산합니다. 식량 10단위가 자연 개체군/식물 자원 1단위를 소모하며, 월간 회복은 동물 최대 60 × 계수, 식물 최대 100 × 계수입니다. 제단·목축·인구 증가는 자동화하지 않습니다.</p>${submit('이 세계의 시험 설정 저장')}</form>`);
 }
-function showTechnology() {
-  showModal('기술의 진척 기록', `<form data-action="technology">${input('기술 이름','name','','required maxlength="40" placeholder="예: 관개 농업"')}<label class="field">발전 단계<select name="stage">${STAGES.map((stage,i)=>`<option value="${i}">${stage}</option>`).join('')}</select></label><p class="helper">같은 이름의 기술이 있으면 해당 단계를 갱신합니다. 연구 조건과 진행량은 GM이 판정합니다.</p>${submit('부족의 지식 기록')}</form>`);
+function showGmMove() {
+  const target = state.world.tiles.find(t => t.id === selected);
+  const current = state.world.tiles.find(t => t.id === state.priest?.tileId);
+  if (!current || !target || !neighbors(current).includes(target.id)) { toast('신관 위치에 인접한 목적지를 선택하세요.', true); return; }
+  const water = [current, target].some(t => ['ocean','coast','lake'].includes(t.terrain));
+  const techs = state.tribes.find(t => t.id === state.selectedTribe)?.technologies || [];
+  showModal('신관 이동 판정', `<form data-action="gm-move"><input type="hidden" name="tileId" value="${esc(target.id)}"><p class="description">목적지: (${target.x}, ${target.y}) ${TERRAINS[target.terrain].name}</p>${water ? `<label class="field">기술의 씨앗 · 이동 근거 기술<select name="technology" required><option value="">기술을 선택하세요</option>${techs.filter(t=>t.stage>0).map(t=>`<option value="${esc(t.name)}">${esc(t.name)} · ${STAGES[t.stage]}</option>`).join('')}</select></label><p class="helper">GM이 항해·조선 등 선택한 기술이 이 수역 이동에 적합한지 확인하세요. 발견·실험 단계는 실제 배나 장비의 준비 여부도 확인합니다. 기술 기록만으로 이동이 자동 허용되지는 않습니다.</p>` : ''}${textarea('이동 판정 근거','reason','이동 수단, 기술의 적용 가능성, 항로와 위험을 확인하고 승인 근거를 기록하세요.')}<p class="helper">위험한 이동은 먼저 D100 도구로 판정하세요. 승인하면 신관 위치와 주변 발견이 갱신됩니다. 소요 시간은 시간 진행에서 별도로 적용합니다. 실패·반려 시에는 이동을 승인하지 않고 행동 판정이나 서술에 결과를 기록하세요.</p>${submit('이동 승인 및 위치 적용')}</form>`);
+}
+function showTechnology(name = '') {
+  const stage = (state.technologyTree || []).find(t=>t.name===name)?.stage || 0;
+  showModal('기술의 진척 기록', `<form data-action="technology">${input('기술 이름','name',name,'required maxlength="40" list="technology-names" placeholder="예: 조선"')}<datalist id="technology-names">${(state.technologyTree || []).map(t=>`<option value="${esc(t.name)}"></option>`).join('')}</datalist><label class="field">발전 단계<select name="stage">${STAGES.map((label,i)=>`<option value="${i}" ${i===stage?'selected':''}>${label}</option>`).join('')}</select></label><p class="helper">같은 이름의 기술이 있으면 해당 단계를 갱신합니다. 연구 조건과 진행량은 GM이 판정합니다.</p>${submit('부족의 지식 기록')}</form>`);
 }
 function showTileEditor() {
   const tile = state.world.tiles.find(t => t.id === selected);
@@ -349,7 +382,7 @@ document.addEventListener('click', async event => {
   if(tile){selected=tile.dataset.tile;renderGame();return;}
   const element=event.target.closest('[data-do]');if(!element)return;
   const command=element.dataset.do;
-  const handlers={ create:showCreate,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'edit-tile':showTileEditor };
+  const handlers={ create:showCreate,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
   if(handlers[command]){handlers[command]();return;}
   if(command==='close')dialog.close();
   if(command==='tab'){tab=element.dataset.tab;renderGame();}
@@ -359,6 +392,10 @@ document.addEventListener('click', async event => {
   if(command==='explore')await action({type:'explore',tileId:selected});
   if(command==='reveal')await action({type:'reveal',role:element.dataset.role,tileId:selected});
   if(command==='resolve')showResolve(element.dataset.id);
+  if(command==='tech-node'){
+    if(state.role==='gm')showTechnology(element.dataset.name);
+    else element.closest('.tech-node').classList.toggle('show-description');
+  }
   if(command==='zoom-in')changeZoom(.4);
   if(command==='zoom-out')changeZoom(-.4);
   if(command==='zoom-reset'){zoom=1;mapView=null;renderGame();}
