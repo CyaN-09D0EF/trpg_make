@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createGame, applyAction, joinGame, projectedState, GameError, ROLES } from './lib/game.mjs';
 import { RoomStore } from './lib/storage.mjs';
+import { restoreCampaign, MAX_CAMPAIGN_BYTES } from './lib/campaign.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -16,15 +17,15 @@ const safeEqual = (a, b) => {
 };
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8' };
 
-async function body(req) {
-  let size = 0, result = '';
+async function body(req, maxBytes = 16384) {
+  let size = 0; const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 16384) throw new GameError('요청이 너무 큽니다.', 413);
-    result += chunk;
+    if (size > maxBytes) throw new GameError('요청이 너무 큽니다.', 413);
+    chunks.push(chunk);
   }
   let parsed;
-  try { parsed = JSON.parse(result || '{}'); }
+  try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); }
   catch { throw new GameError('JSON 형식이 올바르지 않습니다.'); }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new GameError('JSON 객체가 필요합니다.');
   return parsed;
@@ -93,6 +94,23 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
         const room = createGame({ id, name, seed: input.seed?.trim() || randomBytes(5).toString('hex'), gmName, gmHash: digest(key), invite: token() });
         await store.save(room);
         return json(201, { id, token: key, role: 'gm', state: projectedState(room, 'gm') });
+      }
+      if (url.pathname === '/api/rooms/import' && req.method === 'POST') {
+        rateLimit(req, 'create');
+        const input = await body(req, MAX_CAMPAIGN_BYTES);
+        const gmName = typeof input.playerName === 'string' ? input.playerName.trim() : '';
+        if (!gmName || gmName.length > 24) throw new GameError('GM 이름은 1~24자로 입력하세요.');
+        let id;
+        do { id = randomBytes(4).toString('hex').slice(0, 6).toUpperCase(); } while (store.rooms.has(id));
+        const key = token();
+        let room;
+        try { room = restoreCampaign(input.campaign, {id,gmName,gmHash:digest(key),invite:token()}); }
+        catch (error) {
+          if (error instanceof GameError) throw error;
+          throw new GameError('불러오기 파일의 구조가 올바르지 않습니다. GM이 내보낸 기록 JSON을 선택하세요.');
+        }
+        await store.save(room);
+        return json(201, {id,token:key,role:'gm',state:projectedState(room,'gm')});
       }
       const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]{6})(?:\/(join|state|events|actions|export))?$/);
       if (match) {
