@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createApp } from '../server.mjs';
+
+test('three-player API: authentication, private SSE, concurrent writes, persistence and slot revocation',async t=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),'civilization-test-'));
+  let app=await createApp({dataDir:dir});
+  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+  let base=`http://127.0.0.1:${app.server.address().port}`;
+  const request=async(endpoint,data,key)=>{
+    const response=await fetch(base+endpoint,{method:data===undefined?'GET':'POST',headers:{...(data===undefined?{}:{'Content-Type':'application/json'}),...(key?{Authorization:`Bearer ${key}`}:{})},...(data===undefined?{}:{body:JSON.stringify(data)})});
+    return {status:response.status,data:await response.json()};
+  };
+  const create=await request('/api/rooms',{name:'동시 접속 세계',playerName:'마스터',seed:'integration'});
+  assert.equal(create.status,201);
+  const {id,token:gm,state}=create.data,prefix=`/api/rooms/${id}`;
+  assert.equal((await request(prefix+'/state')).status,401);
+  assert.equal((await request(prefix+'/join',{role:'god',name:'신',invite:'wrong'})).status,403);
+  assert.equal((await request(prefix+'/join',{role:'god',name:'신',invite:'가'.repeat(state.invite.length)})).status,403);
+  const god=(await request(prefix+'/join',{role:'god',name:'네뷸라',invite:state.invite})).data.token;
+  const priest=(await request(prefix+'/join',{role:'priest',name:'하루',invite:state.invite})).data.token;
+  assert.equal((await request(prefix+'/join',{role:'god',name:'도둑',invite:state.invite})).status,409);
+  assert.equal((await request(prefix+'/actions',{type:'advance',days:30},priest)).status,403);
+  await request(prefix+'/actions',{type:'create-god',name:'네뷸라',realm:'곤충'},god);
+  await request(prefix+'/actions',{type:'select-tribe',tribeId:'dawn'},god);
+  const failures=await request(prefix+'/actions',{type:'create-priest',name:'하루',strength:100,intelligence:100,social:100},priest);
+  assert.equal(failures.status,400);
+  assert.equal((await request(prefix+'/state',undefined,gm)).data.priest,null);
+  await request(prefix+'/actions',{type:'create-priest',name:'하루',strength:30,intelligence:40,social:30},priest);
+  const controller=new AbortController();
+  const stream=await fetch(base+prefix+'/events',{headers:{Authorization:`Bearer ${priest}`},signal:controller.signal});
+  assert.equal(stream.status,200);
+  const reader=stream.body.getReader();const first=new TextDecoder().decode((await reader.read()).value);
+  assert.ok(first.includes('data: '));assert.equal(first.includes('tokenHash'),false);assert.equal(first.includes('"invite"'),false);
+  await Promise.all(Array.from({length:12},(_,i)=>request(prefix+'/actions',{type:'chat',message:`concurrent-${i}`,audience:'all'},i%2?god:priest)));
+  await request(prefix+'/actions',{type:'narrate',message:'ONLY-GOD',audience:'god'},gm);
+  const p=(await request(prefix+'/state',undefined,priest)).data;
+  assert.equal(p.logs.filter(l=>l.message.startsWith('concurrent-')).length,12);
+  assert.equal(p.logs.some(l=>l.message==='ONLY-GOD'),false);
+  assert.equal(p.world.tiles.length,7);
+  const exported=(await request(prefix+'/export',undefined,gm)).data;
+  assert.equal(exported.invite,undefined);assert.equal(JSON.stringify(exported).includes('tokenHash'),false);
+  assert.equal((await request(prefix+'/export',undefined,god)).status,403);
+  // HTTP mutations commit atomically: a failed multi-field settings change cannot partly apply.
+  const invalid=await request(prefix+'/actions',{type:'settings',workerOutput:900,capacityScale:4,recoveryRate:9,eventChance:25},gm);
+  assert.equal(invalid.status,400);assert.equal((await request(prefix+'/state',undefined,gm)).data.settings.workerOutput,75);
+  controller.abort();await reader.cancel().catch(()=>{});
+  const files=await readdir(dir);assert.deepEqual(files,[`${id}.json`]);
+  const persisted=JSON.parse(await readFile(path.join(dir,files[0]),'utf8'));assert.equal(persisted.priest.name,'하루');
+  await app.close();
+  app=await createApp({dataDir:dir});await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${app.server.address().port}`;
+  t.after(async()=>{await app.close();await rm(dir,{recursive:true,force:true});});
+  assert.equal((await request(prefix+'/state',undefined,priest)).data.priest.name,'하루');
+  await request(prefix+'/actions',{type:'release',role:'god'},gm);
+  assert.equal((await request(prefix+'/state',undefined,god)).status,401);
+  const replacement=await request(prefix+'/join',{role:'god',name:'새로운 신 플레이어',invite:state.invite});
+  assert.equal(replacement.status,200);assert.equal(replacement.data.state.god.name,'네뷸라');
+  assert.equal((await request(prefix+'/state',undefined,god)).status,401);
+});
+
+test('static routes expose only public files and reject foreign-origin mutations',async t=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),'civilization-http-'));const app=await createApp({dataDir:dir});
+  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${app.server.address().port}`;
+  t.after(async()=>{await app.close();await rm(dir,{recursive:true,force:true});});
+  assert.equal((await fetch(base+'/')).status,200);
+  assert.equal((await fetch(base+'/r/ABC123')).status,200);
+  assert.equal((await fetch(base+'/server.mjs')).status,404);
+  assert.equal((await fetch(base+'/data/ABC123.json')).status,404);
+  const malformed=await fetch(base+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:'null'});
+  assert.equal(malformed.status,400);
+  const invalid=await fetch(base+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json','Origin':'https://foreign.example'},body:'{}'});
+  assert.equal(invalid.status,403);
+});
