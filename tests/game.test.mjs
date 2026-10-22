@@ -202,3 +202,34 @@ test('technology catalog is complete only for GM, and player projections contain
   applyAction(r, 'gm', { type: 'technology', name: '조선', stage: 0 });
   assert.equal(projectedState(r, 'priest').technologyTree.some(t => t.name === '조선'), false);
 });
+
+test('large maps spread starting tribes and legacy maps retain their own wrap, movement and monthly ecology', () => {
+  const large = generateWorld('large-map');
+  assert.equal(large.width, 60); assert.equal(large.height, 38);
+  assert.equal(large.tiles.length, 2280);
+  const homes = large.tribes.map(t => large.tiles.find(tile => tile.id === t.tileId));
+  assert.equal(new Set(homes.map(t => t.id)).size, 4);
+  assert.ok(Math.max(...homes.map(t=>t.x)) - Math.min(...homes.map(t=>t.x)) >= 25);
+  assert.ok(Math.max(...homes.map(t=>t.y)) - Math.min(...homes.map(t=>t.y)) >= 15);
+  for (const home of homes) {
+    assert.equal(home.terrain, 'grass');
+    assert.equal(neighbors(home, large.width, large.height).length, 6);
+  }
+  const r = started();
+  r.world = generateWorld('old-world', {width:22,height:14});
+  r.knowledge = {god:{},priest:{}};
+  r.priest.tileId = '21,6';
+  const target = r.world.tiles.find(t => t.id === '0,6');
+  target.terrain = 'plains'; target.elevation = 'flat';
+  const origin = r.world.tiles.find(t => t.id === '21,6');
+  origin.terrain = 'plains'; origin.elevation = 'flat';
+  applyAction(r, 'priest', {type:'explore',tileId:'0,6'});
+  assert.equal(r.priest.tileId,'0,6');
+  assert.ok(projectedState(r,'priest').world.tiles.some(t => t.id === '21,6'));
+  const home = r.world.tribes.find(t=>t.id===r.selectedTribe);
+  home.workers.farm=5;
+  applyAction(r,'gm',{type:'advance',hours:720});
+  assert.equal(r.world.width,22); assert.equal(r.world.height,14); assert.equal(r.world.tiles.length,308);
+  assert.ok(r.world.tiles.every(t=>Number.isFinite(t.wildlife) && Number.isFinite(t.plants)));
+  assert.ok(home.food.grain>=0);
+});

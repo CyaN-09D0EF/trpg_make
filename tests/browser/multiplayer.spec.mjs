@@ -11,6 +11,19 @@ test('three independent browsers play one persistent campaign with private visio
   await gm.getByLabel('GM 이름').fill('이야기꾼');
   await gm.getByRole('button',{name:/세계의 첫 장 열기/}).click();
   await expect(gm.getByRole('heading',{name:'미지의 땅, 우리의 세계'})).toBeVisible();
+  await expect(gm.locator('#world-map [data-tile]')).toHaveCount(2280);
+  await expect(gm.locator('.map-meta')).toContainText('2,280');
+  await gm.getByRole('button',{name:'지도 확대',exact:true}).click();
+  const map = gm.locator('#world-map');
+  const viewBefore = await map.getAttribute('viewBox');
+  const mapBounds = await map.boundingBox();
+  await gm.mouse.move(mapBounds.x+mapBounds.width/2,mapBounds.y+mapBounds.height/2);
+  await gm.mouse.down();
+  await gm.mouse.move(mapBounds.x+mapBounds.width/2-90,mapBounds.y+mapBounds.height/2-40,{steps:8});
+  await gm.mouse.up();
+  await expect(map).not.toHaveAttribute('viewBox',viewBefore);
+  await gm.getByRole('button',{name:'지도 초기화',exact:true}).click();
+
   await gm.getByRole('button',{name:'플레이어 초대'}).click();
   const godLink=await gm.getByLabel('신 초대 링크',{exact:true}).inputValue();
   const priestLink=await gm.getByLabel('신관 초대 링크',{exact:true}).inputValue();
