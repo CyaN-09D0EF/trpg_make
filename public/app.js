@@ -125,7 +125,7 @@ function renderLanding() {
     <main class="landing-main"><div class="landing-copy"><div class="eyebrow"><span class="tiny-line"></span> THREE VOICES. ONE CIVILIZATION.</div>
       <h1>당신의 한 수가,<br>한 문명의 <em>신화가 된다.</em></h1>
       <p class="landing-description">세계를 엮는 GM, 기적을 일으키는 신,<br>그리고 대지를 걷는 신관.<br>서로 다른 시선으로, 하나의 문명을 써 내려가세요.</p>
-      <div class="landing-cta"><button class="button primary large" data-do="create">새로운 세계 만들기 ${icon('arrow')}</button><button class="button subtle large" data-do="join">초대받은 세계로</button></div>
+      <div class="landing-cta"><button class="button primary large" data-do="create">새로운 세계 만들기 ${icon('arrow')}</button><button class="button subtle large" data-do="join">초대받은 세계로</button><button class="button outline large" data-do="import">기록 불러오기</button></div>
       <div class="landing-facts"><span><i></i> 3인 실시간 협동</span><span>시드 기반 육각 세계</span><span>자동 저장</span></div>
     </div><div class="landing-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="art-star star-a">✧</span><span class="art-star star-b">✦</span><div class="preview-map">${renderMap({ width: preview.width, height: preview.height, tiles: preview.tiles }, true)}</div><div class="art-caption"><span class="gold-dot"></span>이름 없는 세계, 아직 쓰이지 않은 이야기<small>WORLD ATLAS / SEED: CHRONICLES-DAWN</small></div><div class="coordinate">N 37° 24′<br>E 126° 58′</div></div></main>
     <section class="roles-intro"><div class="intro-label"><span class="eyebrow">THE THREE ROLES</span><h2>같은 세계,<br>다른 가능성.</h2></div>${[
@@ -140,6 +140,9 @@ function renderLanding() {
 }
 function showCreate() {
   showModal('새로운 세계 만들기', `<form id="create-form">${input('세계의 이름', 'name', '', 'required maxlength="50" placeholder="예: 여명이 머무는 땅"')}${input('GM 이름', 'playerName', '', 'required maxlength="24" placeholder="당신을 어떻게 부를까요?"')}${input('세계 생성 시드 <span class="muted">선택</span>', 'seed', '', 'maxlength="80" placeholder="비워 두면 새로운 세계가 만들어집니다"')}<div class="notice">${icon('people')}<p>당신은 GM으로 입장합니다. 방을 만든 뒤 신과 신관에게 각각 초대 링크를 보내세요.</p></div>${submit('세계의 첫 장 열기')}</form>`, 'GM 1명, 신 1명, 신관 1명. 이야기가 시작됩니다.');
+}
+function showImport() {
+  showModal('기록 불러오기', `<form id="import-form"><label class="field">기록 JSON 파일<input name="campaignFile" type="file" accept=".json,application/json" required></label>${input('GM 이름','playerName','','required maxlength="24"')}<div class="notice"><p>GM이 내보낸 기록 JSON으로 지도·캐릭터·기술·발견·대화·행동을 복원합니다. 기존 방을 덮어쓰지 않고 새 방을 만듭니다. 신과 신관에게 새 초대 링크를 보내주세요.</p></div><p class="helper">기존 내보내기 파일도 지원합니다. 최대 8MB. 비공개 정보가 포함되어 있으므로 GM이 파일을 보관하세요.</p>${submit('세계 복원하기')}</form>`);
 }
 function showJoin(id = '') {
   const hash = new URLSearchParams(location.hash.slice(1));
@@ -298,7 +301,7 @@ function charactersPage() {
   return `<div class="character-grid"><section class="card character-sheet"><div class="character-banner god"><span>✦</span><small>THE DIVINE</small><h2>${esc(state.god?.name || '이름 없는 신')}</h2><p>${state.god ? `${esc(state.god.realm)}의 소영역` : '아직 세계에 모습을 드러내지 않았습니다.'}</p></div><div class="padded">${state.god ? `<div class="info-grid"><div><small>신성 레벨</small><strong>${state.god.level === undefined ? '비공개' : state.god.level}</strong></div><div><small>신앙</small><strong>${state.god.faith === undefined ? '비공개' : num(state.god.faith)}</strong></div></div>${state.god.appearance ? `<p class="description">${esc(state.god.appearance)} · ${esc(state.god.disposition)}</p>` : ''}<h3>신의 권능</h3><div class="tile-tags">${['기적','축복','강신','계시','피조물 창조'].map(p=>`<span>${p}</span>`).join('')}</div><p class="helper">권능 비용은 종류와 규모에 따라 GM이 판정합니다.<br>신성 레벨과 신앙은 별개의 수치입니다.</p>${state.role==='god'?'<button class="button primary" data-do="request">권능 사용 제안하기 →</button>':''}` : `<p class="description">신 플레이어가 이름, 외형, 성향과 초기 소영역 하나를 정합니다. 신성 레벨 1, 신앙 10으로 시작합니다.</p>${state.role==='god'?'<button class="button primary" data-do="create-god">신 생성하기 →</button>':''}`}</div></section>
   <section class="card character-sheet"><div class="character-banner priest"><span>♜</span><small>THE MORTAL</small><h2>${esc(state.priest?.name || '목소리를 기다리는 자')}</h2><p>${esc(state.priest?.race || selectedTribe()?.race || '부족 선택 후 종족이 결정됩니다.')}</p></div><div class="padded">${state.priest ? `<div class="ability-bars">${[['strength','힘'],['intelligence','지능'],['social','사회성']].map(([key,label])=>`<div><span>${label}</span><div class="labor-bar"><i style="width:${state.priest[key] || 0}%"></i></div><strong>${state.priest[key] ?? '비공개'}</strong></div>`).join('')}</div><p class="description">${esc(selectedTribe()?.name)}의 일원. 현재 위치 ${state.priest.tileId || '비공개'}.</p><h3>직업과 스킬</h3><p class="helper">행동을 통해 얻는 직업·스킬은 GM과 협의하여 연대기에 기록하세요. 세부 경험치 규칙은 미정입니다.</p>${state.role==='priest'?'<button class="button primary" data-do="request">행동 제안하기 →</button>':''}` : `<p class="description">기존 부족의 일원으로 시작합니다. 힘·지능·사회성에 100포인트를 배분하며, 부족 종족을 임의로 바꿀 수 없습니다.</p>${state.role==='priest' && selectedTribe()?'<button class="button primary" data-do="create-priest">신관 생성하기 →</button>':''}`}</div></section></div>`;
 }
-function journalPage() { return `<div class="journal-grid"><section class="card log-card journal-log">${logPanel()}</section><aside class="card journal-tools">${actionPanel()}${state.role==='gm'?'<div class="padded"><button class="button outline full" data-do="export">'+icon('download',16)+'기록 JSON 내보내기</button><p class="helper">자동 저장본은 서버 data 폴더에 유지됩니다. 내보내기 파일에는 접속 비밀키가 포함되지 않습니다.</p></div>':''}</aside></div>`; }
+function journalPage() { return `<div class="journal-grid"><section class="card log-card journal-log">${logPanel()}</section><aside class="card journal-tools">${actionPanel()}${state.role==='gm'?'<div class="padded"><button class="button outline full" data-do="export">'+icon('download',16)+'기록 JSON 내보내기</button><p class="helper">내보낸 파일은 시작 화면의 기록 불러오기로 복원할 수 있습니다. 비공개 세계 정보가 포함되어 있으므로 GM이 보관하세요.</p></div>':''}</aside></div>`; }
 
 function showInvite() {
   showModal('동료를 세계로 초대하기', `<div class="invite-links">${['god','priest'].map(role => {
@@ -413,7 +416,7 @@ document.addEventListener('click', async event => {
   if(tile){selected=tile.dataset.tile;renderGame();return;}
   const element=event.target.closest('[data-do]');if(!element)return;
   const command=element.dataset.do;
-  const handlers={ create:showCreate,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
+  const handlers={ create:showCreate,import:showImport,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
   if(handlers[command]){handlers[command]();return;}
   if(command==='close')dialog.close();
   if(command==='tab'){tab=element.dataset.tab;renderGame();}
@@ -461,6 +464,21 @@ document.addEventListener('submit', async event=>{
   event.preventDefault();
   if(form.dataset.busy)return;
   const data=Object.fromEntries(new FormData(form));
+  if(form.id==='import-form'){
+    form.dataset.busy='true';const button=form.querySelector('[type=submit]');button.disabled=true;
+    try {
+      const file=form.elements.campaignFile.files[0];
+      if(!file)throw new Error('기록 JSON 파일을 선택하세요.');
+      if(file.size>8*1024*1024)throw new Error('파일은 8MB 이하여야 합니다.');
+      let campaign;
+      try { campaign=JSON.parse(await file.text()); }
+      catch { throw new Error('JSON 파일을 읽을 수 없습니다. GM이 내보낸 기록을 선택하세요.'); }
+      const result=await api('/api/rooms/import',{campaign,playerName:data.playerName},false);
+      await enter(result);toast('세계를 복원했습니다. 신과 신관을 새 링크로 초대하세요.');
+    } catch(e){toast(e.message,true);}
+    finally {delete form.dataset.busy;button.disabled=false;}
+    return;
+  }
   if(form.id==='create-form'||form.id==='join-form'){
     form.dataset.busy='true';const button=form.querySelector('[type=submit]');button.disabled=true;
     try{
