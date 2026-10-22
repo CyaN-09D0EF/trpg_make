@@ -154,3 +154,51 @@ test('GM environment changes refresh only active observations and never expose r
   assert.throws(()=>applyAction(r,'priest',{...edit,tileId:local}),/GM/);
   assert.throws(()=>applyAction(r,'gm',{...edit,tileId:local,terrain:'ocean'}),/정착지/);
 });
+
+test('GM water movement requires recorded technology and updates position and observations', () => {
+  const r = started();
+  const origin = r.world.tiles.find(t => t.id === r.priest.tileId);
+  const target = r.world.tiles.find(t => neighbors(origin).includes(t.id));
+  target.terrain = 'coast'; target.elevation = 'flat';
+  const move = { type: 'gm-move', tileId: target.id, technology: '조선', reason: '시험선을 준비했고 잔잔한 연안 항로를 확인함' };
+  assert.throws(() => applyAction(r, 'priest', move), /GM만/);
+  assert.throws(() => applyAction(r, 'priest', { type: 'explore', tileId: target.id }), /별도 판정/);
+  assert.throws(() => applyAction(r, 'gm', move), /기술의 씨앗/);
+  applyAction(r, 'gm', { type: 'technology', name: '조선', stage: 0 });
+  assert.throws(() => applyAction(r, 'gm', move), /기술의 씨앗/);
+  applyAction(r, 'gm', { type: 'technology', name: '조선', stage: 2 });
+  assert.throws(() => applyAction(r, 'gm', { ...move, reason: '' }), /판정 근거/);
+  assert.equal(r.priest.tileId, origin.id);
+  applyAction(r, 'gm', move);
+  assert.equal(r.priest.tileId, target.id);
+  assert.ok(projectedState(r, 'priest').world.tiles.some(t => t.id === target.id));
+  assert.ok(r.logs.some(l => l.message.includes('조선 (실험)') && l.audience === 'priest'));
+  assert.throws(() => applyAction(r, 'priest', { type: 'explore', tileId: origin.id }), /별도 판정/);
+  applyAction(r, 'gm', { ...move, tileId: origin.id });
+  assert.equal(r.priest.tileId, origin.id);
+  assert.throws(() => applyAction(r, 'gm', { ...move, tileId: origin.id }), /인접/);
+});
+
+test('technology catalog is complete only for GM, and player projections contain only unlocked nodes and edges', () => {
+  const r = started();
+  const gm = projectedState(r, 'gm');
+  assert.ok(gm.technologyTree.length > 60);
+  assert.ok(gm.technologyTree.every(t => t.stage === 0 && t.description));
+  for (const role of ['god', 'priest']) assert.deepEqual(projectedState(r, role).technologyTree, []);
+  applyAction(r, 'gm', { type: 'technology', name: '核秘密', stage: 0 });
+  applyAction(r, 'gm', { type: 'technology', name: '조선', stage: 1 });
+  for (const role of ['god', 'priest']) {
+    const view = projectedState(r, role);
+    assert.deepEqual(view.technologyTree.map(t => t.name), ['조선']);
+    assert.deepEqual(view.technologyTree[0].prerequisites, []);
+    assert.equal(JSON.stringify(view).includes('核秘密'), false);
+    assert.equal(JSON.stringify(view).includes('원자핵'), false);
+    assert.deepEqual(view.tribes.find(t => t.id === view.selectedTribe).technologies, [{ name: '조선', stage: 1 }]);
+  }
+  applyAction(r, 'gm', { type: 'technology', name: '항해', stage: 3 });
+  assert.deepEqual(projectedState(r, 'priest').technologyTree.find(t => t.name === '조선').prerequisites, ['항해']);
+  applyAction(r, 'gm', { type: 'technology', name: '독자 항법', stage: 2 });
+  assert.ok(projectedState(r, 'god').technologyTree.some(t => t.name === '독자 항법'));
+  applyAction(r, 'gm', { type: 'technology', name: '조선', stage: 0 });
+  assert.equal(projectedState(r, 'priest').technologyTree.some(t => t.name === '조선'), false);
+});
