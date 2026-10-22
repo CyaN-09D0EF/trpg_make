@@ -119,7 +119,7 @@ function submit(label) { return `<button class="button primary full" type="submi
 function renderLanding() {
   streamController?.abort();
   const recent = sessions();
-  const preview = generateWorld('chronicles-dawn');
+  const preview = generateWorld('chronicles-dawn', { width:22, height:14 });
   app.innerHTML = `<div class="landing">
     <header class="landing-header">${brand()}<div class="landing-top"><span class="version">RULEBOOK v0.4</span><a class="text-button" href="/rulebook.md" target="_blank" rel="noopener">룰북 열기 ${icon('book', 16)}</a></div></header>
     <main class="landing-main"><div class="landing-copy"><div class="eyebrow"><span class="tiny-line"></span> THREE VOICES. ONE CIVILIZATION.</div>
@@ -183,7 +183,7 @@ function renderMap(world, preview = false) {
     </g>`;
   }
   const view = !preview && mapView ? mapView : `0 0 ${w} ${h}`;
-  return `<svg class="world-svg" ${preview ? 'aria-label="육각 지형 세계의 미리보기"' : 'id="world-map" aria-label="세계 지도"'} viewBox="${view}" data-width="${w}" data-height="${h}" xmlns="http://www.w3.org/2000/svg">${shapes}</svg>`;
+  return `<svg class="world-svg ${!preview && zoom>1?'map-zoomed':''}" ${preview ? 'aria-label="육각 지형 세계의 미리보기"' : 'id="world-map" aria-label="세계 지도"'} viewBox="${view}" data-width="${w}" data-height="${h}" xmlns="http://www.w3.org/2000/svg">${shapes}</svg>`;
 }
 function selectedTribe() { return state?.tribes.find(t => t.id === state.selectedTribe); }
 function dateLabel() { return `${state.month}개월 차 · ${((state.day - 1) % 30) + 1}일${state.hour ? ` ${state.hour}시` : ''}`; }
@@ -234,7 +234,7 @@ function renderSetupBanner() {
   return `<div class="setup-banner"><span class="banner-symbol">✧</span><div><strong>이야기의 시작을 준비하고 있어요</strong><p>${esc(text)}</p></div>${allowed ? `<button class="button small gold" data-do="${act}">${button}${icon('arrow',16)}</button>` : `<span class="waiting-tag">${act === 'create-priest' ? '신관' : '신'}의 선택 대기 중</span>`}</div>`;
 }
 function worldWorkspace() {
-  return `<div class="world-workspace"><section class="map-card card"><div class="card-header"><div class="card-title">${icon('map',18)}세계 지도<span class="tag">원통형 세계</span></div><span class="map-meta">육각 타일 · 한 변 2km</span></div><div class="map-container"><div class="map-inner">${renderMap(state.world)}</div><div class="compass-rose"><span>N</span>${icon('compass',34)}</div><div class="map-coordinate">${selected ? `선택 좌표 ${selected.replace(',', ' / ')}` : '미지의 세계'}<small>동서 경계는 서로 연결됩니다</small></div><div class="map-controls"><button class="icon-button" data-do="zoom-in" aria-label="지도 확대">+</button><button class="icon-button" data-do="zoom-reset" aria-label="지도 초기화">⌾</button><button class="icon-button" data-do="zoom-out" aria-label="지도 축소">−</button></div></div><div class="map-legend"><span><i style="--swatch:#657d62"></i>초원·숲</span><span><i style="--swatch:#93916a"></i>평원</span><span><i style="--swatch:#557f89"></i>수역</span><span><i style="--swatch:#c2a878"></i>사막</span><span><i style="--swatch:#263339"></i>미탐사</span><span class="legend-end">${icon('eye',14)}${state.role === 'gm' ? 'GM 전지 시야' : '역할별 독립 시야'}</span></div></section><aside class="tile-card card">${tilePanel()}</aside><section class="log-card card">${logPanel()}</section><aside class="action-card card">${actionPanel()}</aside></div>`;
+  return `<div class="world-workspace"><section class="map-card card"><div class="card-header"><div class="card-title">${icon('map',18)}세계 지도<span class="tag">원통형 세계</span></div><span class="map-meta">${state.world.width} × ${state.world.height} · ${num(state.world.width*state.world.height)}타일</span></div><div class="map-container"><div class="map-inner">${renderMap(state.world)}</div><div class="compass-rose"><span>N</span>${icon('compass',34)}</div><div class="map-coordinate">${selected ? `선택 좌표 ${selected.replace(',', ' / ')}` : '미지의 세계'}<small>확대 후 드래그로 이동 · 동서 경계 연결</small></div><div class="map-controls"><button class="icon-button" data-do="zoom-in" aria-label="지도 확대">+</button><button class="icon-button" data-do="zoom-reset" aria-label="지도 초기화">⌾</button><button class="icon-button" data-do="zoom-out" aria-label="지도 축소">−</button></div></div><div class="map-legend"><span><i style="--swatch:#657d62"></i>초원·숲</span><span><i style="--swatch:#93916a"></i>평원</span><span><i style="--swatch:#557f89"></i>수역</span><span><i style="--swatch:#c2a878"></i>사막</span><span><i style="--swatch:#263339"></i>미탐사</span><span class="legend-end">${icon('eye',14)}${state.role === 'gm' ? 'GM 전지 시야' : '역할별 독립 시야'}</span></div></section><aside class="tile-card card">${tilePanel()}</aside><section class="log-card card">${logPanel()}</section><aside class="action-card card">${actionPanel()}</aside></div>`;
 }
 function tilePanel() {
   const tile = state.world.tiles.find(t => t.id === selected);
@@ -242,7 +242,7 @@ function tilePanel() {
   const tribe = state.tribes.find(t => t.id === tile.settlementId);
   const feature = FEATURES[tile.feature]?.name;
   const elevation = {flat:'평지',hill:'언덕',mountain:'산'}[tile.elevation];
-  const canMove = state.role === 'priest' && state.priest && neighbors(state.world.tiles.find(t=>t.id === state.priest.tileId) || {x:0,y:0}).includes(tile.id);
+  const canMove = state.role === 'priest' && state.priest && neighbors(state.world.tiles.find(t=>t.id === state.priest.tileId) || {x:0,y:0}, state.world.width, state.world.height).includes(tile.id);
   return `<div class="tile-illustration ${tile.terrain}"><span class="tile-coord">TILE ${tile.x.toString().padStart(2,'0')} / ${tile.y.toString().padStart(2,'0')}</span><div class="mini-landscape"><span>${tile.elevation === 'mountain' ? '♧' : feature?.includes('숲') || tile.feature === 'forest' ? '♠ ♠' : ['ocean','coast','lake'].includes(tile.terrain) ? '≈' : '⌁'}</span></div><div class="tile-art-title">${TERRAINS[tile.terrain].name}${feature ? ` · ${feature}` : ''}<small>${elevation}${tile.river.length ? ' · 강 인접' : ''}</small></div></div><div class="tile-info"><div class="section-tiny">선택한 타일 <span>${tile.id}</span></div><h3>${esc(tribe?.name || `${TERRAINS[tile.terrain].name} ${feature || elevation}`)}</h3><div class="tile-tags"><span>${TERRAINS[tile.terrain].name}</span>${feature ? `<span>${feature}</span>` : ''}<span>${elevation}</span></div><div class="tile-detail"><span>풍부한 자원</span><strong>${esc(tile.resource || '발견되지 않음')}</strong></div><div class="tile-detail"><span>동물 개체군</span><strong>${num(tile.wildlife)}</strong></div><div class="tile-detail"><span>식물 자원량</span><strong>${num(tile.plants)}</strong></div>${tile.ruin ? '<div class="tile-detail"><span>발견</span><strong class="gold-text">고대 유적</strong></div>' : ''}<p class="observation">${icon('eye',14)}${tile.observedDay === state.day ? '현재 관찰 정보' : `${tile.observedDay}일 차 관찰 · 오래된 정보일 수 있음`}</p>${canMove ? '<button class="button primary full" data-do="explore">이곳으로 탐험하기 →</button>' : ''}${state.role === 'gm' ? '<div class="button-pair"><button class="button outline small" data-do="reveal" data-role="god">신에게 공개</button><button class="button outline small" data-do="reveal" data-role="priest">신관에게 공개</button></div><button class="text-button" data-do="gm-move">신관 이동 판정 ↗</button><button class="text-button edit-tile-button" data-do="edit-tile">타일 환경 편집 ↗</button>' : ''}</div>`;
 }
 function visibleLogs() {
@@ -354,7 +354,7 @@ function showSettings() {
 function showGmMove() {
   const target = state.world.tiles.find(t => t.id === selected);
   const current = state.world.tiles.find(t => t.id === state.priest?.tileId);
-  if (!current || !target || !neighbors(current).includes(target.id)) { toast('신관 위치에 인접한 목적지를 선택하세요.', true); return; }
+  if (!current || !target || !neighbors(current, state.world.width, state.world.height).includes(target.id)) { toast('신관 위치에 인접한 목적지를 선택하세요.', true); return; }
   const water = [current, target].some(t => ['ocean','coast','lake'].includes(t.terrain));
   const techs = state.tribes.find(t => t.id === state.selectedTribe)?.technologies || [];
   showModal('신관 이동 판정', `<form data-action="gm-move"><input type="hidden" name="tileId" value="${esc(target.id)}"><p class="description">목적지: (${target.x}, ${target.y}) ${TERRAINS[target.terrain].name}</p>${water ? `<label class="field">기술의 씨앗 · 이동 근거 기술<select name="technology" required><option value="">기술을 선택하세요</option>${techs.filter(t=>t.stage>0).map(t=>`<option value="${esc(t.name)}">${esc(t.name)} · ${STAGES[t.stage]}</option>`).join('')}</select></label><p class="helper">GM이 항해·조선 등 선택한 기술이 이 수역 이동에 적합한지 확인하세요. 발견·실험 단계는 실제 배나 장비의 준비 여부도 확인합니다. 기술 기록만으로 이동이 자동 허용되지는 않습니다.</p>` : ''}${textarea('이동 판정 근거','reason','이동 수단, 기술의 적용 가능성, 항로와 위험을 확인하고 승인 근거를 기록하세요.')}<p class="helper">위험한 이동은 먼저 D100 도구로 판정하세요. 승인하면 신관 위치와 주변 발견이 갱신됩니다. 소요 시간은 시간 진행에서 별도로 적용합니다. 실패·반려 시에는 이동을 승인하지 않고 행동 판정이나 서술에 결과를 기록하세요.</p>${submit('이동 승인 및 위치 적용')}</form>`);
@@ -369,15 +369,46 @@ function showTileEditor() {
   showModal(`타일 환경 편집 · ${tile.id}`, `<form data-action="edit-tile"><input type="hidden" name="tileId" value="${tile.id}"><div class="two-inputs"><label class="field">기본 지형<select name="terrain">${Object.entries(TERRAINS).map(([key,value])=>`<option value="${key}" ${tile.terrain===key?'selected':''}>${value.name}</option>`).join('')}</select></label><label class="field">지형 특성<select name="feature"><option value="">없음</option>${Object.entries(FEATURES).map(([key,value])=>`<option value="${key}" ${tile.feature===key?'selected':''}>${value.name}</option>`).join('')}</select></label><label class="field">고도<select name="elevation">${[['flat','평지'],['hill','언덕'],['mountain','산']].map(([key,name])=>`<option value="${key}" ${tile.elevation===key?'selected':''}>${name}</option>`).join('')}</select></label>${input('풍부한 자원','resource',tile.resource||'','maxlength="30" placeholder="없으면 비워두세요"')}${input('동물 개체군','wildlife',tile.wildlife,'type="number" min="0" max="1000000" required')}${input('식물 자원량','plants',tile.plants,'type="number" min="0" max="1000000" required')}</div>${input('변경 사유','reason','','required maxlength="300" placeholder="예: 곤충의 기적으로 풀이 줄어들었다"')}<p class="helper">신과 신관은 현재 관찰 중인 지역만 즉시 갱신됩니다. 멀리 있는 타일의 변화는 별도로 정보를 공개해야 알 수 있습니다. 강은 타일 사이 경계로 유지됩니다.</p>${submit('세계의 변화 적용')}</form>`);
 }
 function changeZoom(delta) {
-  zoom = Math.min(3.2, Math.max(1, zoom+delta));
+  zoom = Math.min(8, Math.max(1, zoom+delta));
   const svg=document.querySelector('#world-map');if(!svg)return;
   const w=Number(svg.dataset.width), h=Number(svg.dataset.height);
-  const [cx,cy]= selected ? hexPoint(...selected.split(',').map(Number)) : [w/2,h/2];
+  const previous=svg.getAttribute('viewBox').split(' ').map(Number);
+  const [cx,cy]= selected ? hexPoint(...selected.split(',').map(Number)) : [previous[0]+previous[2]/2,previous[1]+previous[3]/2];
   const vw=w/zoom,vh=h/zoom;
   mapView=`${Math.max(0,Math.min(w-vw,cx-vw/2))} ${Math.max(0,Math.min(h-vh,cy-vh/2))} ${vw} ${vh}`;
   svg.setAttribute('viewBox',mapView);
+  svg.classList.toggle('map-zoomed',zoom>1);
 }
+let mapDrag = null, ignoreMapClick = false;
+document.addEventListener('pointerdown', event => {
+  const svg = event.target.closest('#world-map');
+  if (!svg || zoom <= 1 || event.button !== 0) return;
+  const matrix = svg.getScreenCTM();
+  if (!matrix) return;
+  mapDrag = { svg, id:event.pointerId, x:event.clientX, y:event.clientY, view:svg.getAttribute('viewBox').split(' ').map(Number), scale:matrix.a, moved:false };
+});
+document.addEventListener('pointermove', event => {
+  if (!mapDrag || event.pointerId !== mapDrag.id) return;
+  const {svg,x,y,view,scale} = mapDrag;
+  if (Math.hypot(event.clientX-x,event.clientY-y) < 5 && !mapDrag.moved) return;
+  if (!mapDrag.moved) { svg.setPointerCapture(event.pointerId); mapDrag.moved=true; }
+  const [vx,vy,vw,vh]=view, w=Number(svg.dataset.width),h=Number(svg.dataset.height);
+  mapView=`${Math.max(0,Math.min(w-vw,vx-(event.clientX-x)/scale))} ${Math.max(0,Math.min(h-vh,vy-(event.clientY-y)/scale))} ${vw} ${vh}`;
+  svg.setAttribute('viewBox',mapView);
+});
+function finishMapDrag(event) {
+  if (!mapDrag || event.pointerId !== mapDrag.id) return;
+  if (mapDrag.moved) {
+    ignoreMapClick=true;
+    // The synthetic click follows pointerup synchronously; clear before the next tap.
+    setTimeout(()=>{ignoreMapClick=false;},0);
+  }
+  mapDrag=null;
+}
+document.addEventListener('pointerup', finishMapDrag);
+document.addEventListener('pointercancel', finishMapDrag);
 document.addEventListener('click', async event => {
+  if(ignoreMapClick && event.target.closest('#world-map'))return;
   const tile=event.target.closest('[data-tile]');
   if(tile){selected=tile.dataset.tile;renderGame();return;}
   const element=event.target.closest('[data-do]');if(!element)return;
