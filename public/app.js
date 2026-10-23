@@ -1,4 +1,5 @@
 import { TERRAINS, FEATURES, generateWorld, neighbors } from '/world.mjs';
+import { SETTLEMENT_STAGES, DENSITIES, RACE_CONSUMPTION, recommendedStage, cityRegions } from '/settlements.mjs';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#modal');
@@ -264,7 +265,7 @@ function renderGame() {
     <div class="game-main"><header class="game-header"><div class="breadcrumb">우리의 연대기 <span>/</span> <strong>${{world:'세계 지도',civilization:'문명 관리',characters:'신과 신관',journal:'연대기'}[tab]}</strong></div><div class="header-right"><button class="icon-button mobile-home-button" data-do="home" aria-label="시작 화면으로">${icon('home',16)}</button>${state.role === 'gm' ? `<button class="icon-button mobile-invite" data-do="invite" aria-label="플레이어 초대">${icon('link',16)}</button>` : ''}<span id="connection" class="connection ${connected ? '' : 'offline'}"><i></i>${connected ? '실시간 연결됨' : '연결 중…'}</span><span class="header-role ${state.role}">${ROLE_ICON[state.role]} ${ROLE[state.role]}의 시선</span></div></header>
       <div class="game-content"><div class="page-heading"><div><div class="eyebrow">${{world:'THE KNOWN WORLD',civilization:'A CIVILIZATION IN THE MAKING',characters:'THE DIVINE & THE MORTAL',journal:'THE LIVING CHRONICLE'}[tab]}</div><h1>${{world:'미지의 땅, 우리의 세계',civilization:t?.name || '문명의 첫걸음',characters:'하늘의 의지와 대지의 목소리',journal:'선택이 역사가 되는 순간'}[tab]}</h1><p>${{world:'안개 너머의 가능성을 발견하고, 문명의 첫 장을 열어보세요.',civilization:'작은 공동체의 오늘이, 내일의 문명이 됩니다.',characters:'서로 다른 힘으로, 같은 미래를 향해.',journal:'세 사람이 함께 남기는, 단 하나의 이야기.'}[tab]}</p></div><div class="date-badge">${icon('sun', 22)}<div><strong>${dateLabel()}</strong><small>여명의 시대</small></div></div></div>
       ${renderSetupBanner()}
-      <div class="stats-strip">${stat(icon('people'), '부족 인구', t ? `${num(t.population)}<small>명</small>` : '—', t ? t.race : '시작 부족 미선택')}${stat(icon('sun'), '신앙', state.god?.faith !== undefined ? `${num(state.god.faith)}<small>점</small>` : '—', state.god ? `${esc(state.god.realm)}의 소영역` : '신의 탄생을 기다리는 중')}${stat(icon('food'), '보유 식량', t ? `${num(Object.values(t.food).reduce((a,b) => a+b,0))}<small>단위</small>` : '—', t ? `월간 소비 ${num(t.population * t.consumption)}` : '재고 미확인')}${stat(icon('compass'), '발견한 세계', `${state.role === 'gm' ? '100' : (state.world.tiles.length / (state.world.width * state.world.height) * 100).toFixed(0)}<small>%</small>`, `${state.world.tiles.length} / ${state.world.width * state.world.height} 타일`)}</div>
+      <div class="stats-strip">${stat(icon('people'), '부족 인구', t ? `${num(t.population)}<small>명</small>` : '—', t ? (t.populationGroups.length>1?'다종족':t.populationGroups[0].race) : '시작 부족 미선택')}${stat(icon('sun'), '신앙', state.god?.faith !== undefined ? `${num(state.god.faith)}<small>점</small>` : '—', state.god ? `${esc(state.god.realm)}의 소영역` : '신의 탄생을 기다리는 중')}${stat(icon('food'), '보유 식량', t ? `${num(Object.values(t.food).reduce((a,b) => a+b,0))}<small>단위</small>` : '—', t ? `월간 소비 ${num(t.monthlyConsumption ?? t.population * t.consumption)}` : '재고 미확인')}${stat(icon('compass'), '발견한 세계', `${state.role === 'gm' ? '100' : (state.world.tiles.length / (state.world.width * state.world.height) * 100).toFixed(0)}<small>%</small>`, `${state.world.tiles.length} / ${state.world.width * state.world.height} 타일`)}</div>
       ${tab === 'world' ? worldWorkspace() : tab === 'civilization' ? civilizationPage() : tab === 'characters' ? charactersPage() : journalPage()}
       <div class="workspace-footer"><span><span class="gold-dot"></span> ${esc(state.name)} <span class="muted">·</span> 세계는 당신들의 선택을 기억합니다.</span><span id="save-status">${icon('check', 13)} 자동 저장됨 · ${new Date(state.updatedAt).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' })}</span></div>
       </div></div></div>`;
@@ -283,7 +284,7 @@ function renderSetupBanner() {
   let text, button, act;
   if (!state.god) { text = state.role === 'god' ? '첫 번째 신의 이름을 지어주세요. 작은 소영역 하나에서 신화가 시작됩니다.' : '신 플레이어가 이름과 초기 소영역을 정하면 이야기가 시작됩니다.'; button = '신 생성'; act = 'create-god'; }
   else if (!state.selectedTribe) { text = '이미 이 세계를 살아가고 있는 부족 중, 함께할 부족을 신이 선택합니다.'; button = '시작 부족 선택'; act = 'select-tribe'; }
-  else if (!state.priest) { text = `${selectedTribe().name}의 일원으로 신관을 만들어주세요. 종족은 ${selectedTribe().race}으로 고정됩니다.`; button = '신관 생성'; act = 'create-priest'; }
+  else if (!state.priest) { text = `${selectedTribe().name}의 일원으로 신관을 만들어주세요. 부족의 구성 종족 중에서 선택합니다.`; button = '신관 생성'; act = 'create-priest'; }
   else return `<div class="chapter-line"><span>CHAPTER 01</span><i></i> 신화가 시작되는 곳 <span class="playtest-label">시험 규칙 적용 중</span></div>`;
   const allowed = act === 'create-priest' ? state.role === 'priest' : state.role === 'god';
   return `<div class="setup-banner"><span class="banner-symbol">✧</span><div><strong>이야기의 시작을 준비하고 있어요</strong><p>${esc(text)}</p></div>${allowed ? `<button class="button small gold" data-do="${act}">${button}${icon('arrow',16)}</button>` : `<span class="waiting-tag">${act === 'create-priest' ? '신관' : '신'}의 선택 대기 중</span>`}</div>`;
@@ -295,10 +296,11 @@ function tilePanel() {
   const tile = state.world.tiles.find(t => t.id === selected);
   if (!tile) return `<div class="card-header"><span class="card-title">${icon('compass',18)}미지의 땅</span></div><div class="unknown-tile"><span>✧</span><h3>안개 너머의 세계</h3><p>아직 이 지역을 알지 못합니다.<br>탐험하거나 GM에게 관찰 정보를 요청하세요.</p>${state.role === 'priest' && state.priest && selected ? `<button class="button outline full" data-do="explore">이곳으로 이동 시도</button>` : ''}</div>`;
   const tribe = state.tribes.find(t => t.id === tile.settlementId);
+  const settlement = tribe?.settlements?.find(s=>s.tileId===tile.id);
   const feature = FEATURES[tile.feature]?.name;
   const elevation = {flat:'평지',hill:'언덕',mountain:'산'}[tile.elevation];
   const canMove = state.role === 'priest' && state.priest && neighbors(state.world.tiles.find(t=>t.id === state.priest.tileId) || {x:0,y:0}, state.world.width, state.world.height).includes(tile.id);
-  return `<div class="tile-illustration ${tile.terrain}"><span class="tile-coord">TILE ${tile.x.toString().padStart(2,'0')} / ${tile.y.toString().padStart(2,'0')}</span><div class="mini-landscape"><span>${tile.elevation === 'mountain' ? '♧' : feature?.includes('숲') || tile.feature === 'forest' ? '♠ ♠' : ['ocean','coast','lake'].includes(tile.terrain) ? '≈' : '⌁'}</span></div><div class="tile-art-title">${TERRAINS[tile.terrain].name}${feature ? ` · ${feature}` : ''}<small>${elevation}${tile.river.length ? ' · 강 인접' : ''}</small></div></div><div class="tile-info"><div class="section-tiny">선택한 타일 <span>${tile.id}</span></div><h3>${esc(tribe?.name || `${TERRAINS[tile.terrain].name} ${feature || elevation}`)}</h3><div class="tile-tags"><span>${TERRAINS[tile.terrain].name}</span>${feature ? `<span>${feature}</span>` : ''}<span>${elevation}</span></div><div class="tile-detail"><span>풍부한 자원</span><strong>${esc(tile.resource || '발견되지 않음')}</strong></div><div class="tile-detail"><span>동물 개체군</span><strong>${num(tile.wildlife)}</strong></div><div class="tile-detail"><span>식물 자원량</span><strong>${num(tile.plants)}</strong></div>${tile.ruin ? '<div class="tile-detail"><span>발견</span><strong class="gold-text">고대 유적</strong></div>' : ''}<p class="observation">${icon('eye',14)}${tile.observedDay === state.day ? '현재 관찰 정보' : `${tile.observedDay}일 차 관찰 · 오래된 정보일 수 있음`}</p>${canMove ? '<button class="button primary full" data-do="explore">이곳으로 탐험하기 →</button>' : ''}${state.role === 'gm' ? '<div class="button-pair"><button class="button outline small" data-do="reveal" data-role="god">신에게 공개</button><button class="button outline small" data-do="reveal" data-role="priest">신관에게 공개</button></div><button class="text-button" data-do="gm-move">신관 이동 판정 ↗</button><button class="text-button edit-tile-button" data-do="edit-tile">타일 환경 편집 ↗</button>' : ''}</div>`;
+  return `<div class="tile-illustration ${tile.terrain}"><span class="tile-coord">TILE ${tile.x.toString().padStart(2,'0')} / ${tile.y.toString().padStart(2,'0')}</span><div class="mini-landscape"><span>${tile.elevation === 'mountain' ? '♧' : feature?.includes('숲') || tile.feature === 'forest' ? '♠ ♠' : ['ocean','coast','lake'].includes(tile.terrain) ? '≈' : '⌁'}</span></div><div class="tile-art-title">${TERRAINS[tile.terrain].name}${feature ? ` · ${feature}` : ''}<small>${elevation}${tile.river.length ? ' · 강 인접' : ''}</small></div></div><div class="tile-info"><div class="section-tiny">선택한 타일 <span>${tile.id}</span></div><h3>${esc(settlement?.name || tribe?.name || `${TERRAINS[tile.terrain].name} ${feature || elevation}`)}</h3><div class="tile-tags"><span>${TERRAINS[tile.terrain].name}</span>${feature ? `<span>${feature}</span>` : ''}<span>${elevation}</span></div>${settlement?`<div class="tile-detail"><span>정착지</span><strong>${SETTLEMENT_STAGES[settlement.stage].name} · ${num(settlement.population)}명</strong></div>`:''}<div class="tile-detail"><span>주거·시설 점유</span><strong>${tile.developed || 0}%</strong></div><div class="tile-detail"><span>풍부한 자원</span><strong>${esc(tile.resource || '발견되지 않음')}</strong></div><div class="tile-detail"><span>동물 개체군</span><strong>${num(tile.wildlife)}</strong></div><div class="tile-detail"><span>식물 자원량</span><strong>${num(tile.plants)}</strong></div>${tile.ruin ? '<div class="tile-detail"><span>발견</span><strong class="gold-text">고대 유적</strong></div>' : ''}<p class="observation">${icon('eye',14)}${tile.observedDay === state.day ? '현재 관찰 정보' : `${tile.observedDay}일 차 관찰 · 오래된 정보일 수 있음`}</p>${canMove ? '<button class="button primary full" data-do="explore">이곳으로 탐험하기 →</button>' : ''}${state.role === 'gm' ? '<div class="button-pair"><button class="button outline small" data-do="reveal" data-role="god">신에게 공개</button><button class="button outline small" data-do="reveal" data-role="priest">신관에게 공개</button></div><button class="text-button" data-do="gm-move">신관 이동 판정 ↗</button><button class="text-button edit-tile-button" data-do="edit-tile">타일 환경 편집 ↗</button>' : ''}</div>`;
 }
 function visibleLogs() {
   return state.logs.filter(l => logTab === 'all' || logTab === 'chat' && l.kind === 'chat' || logTab === 'story' && l.kind !== 'chat');
@@ -317,12 +319,67 @@ function actionPanel() {
   const count = state.actions.filter(a=>a.status==='pending').length;
   return `<div class="card-header"><span class="card-title">${icon('sun',18)}${ROLE[state.role]}의 행동</span><span class="tiny-tag">${count} 대기</span></div><div class="action-options">${state.role === 'gm' ? `<button data-do="requests">${icon('feather')}<span><strong>행동 판정</strong><small>플레이어의 선택에 응답하기</small></span><span class="action-arrow">${count || '↗'}</span></button><button data-do="narrate">${icon('book')}<span><strong>세계 서술</strong><small>새로운 장면과 사건 전하기</small></span><span class="action-arrow">↗</span></button><button data-do="advance">${icon('sun')}<span><strong>시간 진행</strong><small>일·주·월과 월말 정산</small></span><span class="action-arrow">↗</span></button>` : state.role === 'god' ? `<button data-do="request"><span class="power-icon">✦</span><span><strong>신의 권능</strong><small>기적·축복·강신·계시·창조</small></span><span class="action-arrow">↗</span></button><button data-do="requests">${icon('feather')}<span><strong>나의 행동 기록</strong><small>GM의 응답 확인하기</small></span><span class="action-arrow">↗</span></button>` : `<button data-do="request">${icon('compass')}<span><strong>신관의 행동</strong><small>탐험·연구·제작·외교·전투</small></span><span class="action-arrow">↗</span></button><button data-do="workers">${icon('people')}<span><strong>노동력 배치</strong><small>부족의 식량 생산 관리</small></span><span class="action-arrow">↗</span></button>`}<button data-do="roll">${icon('dice')}<span><strong>D100 대립 판정</strong><small>서버에서 굴리는 운명의 주사위</small></span><span class="action-arrow">↗</span></button></div>${state.role === 'gm' ? `<button class="gm-settings" data-do="settings">${icon('settings',15)}시험 규칙 설정</button>` : '<p class="action-note">자유롭게 행동을 제안하세요.<br>세계의 응답은 GM이 결정합니다.</p>'}`;
 }
+function settlementsPanel(t) {
+  const gm=state.role==='gm', all=t.settlements;
+  const regions=cityRegions(t);
+  return `<section class="card padded settlement-panel"><div class="section-heading"><h2>${icon('home')} 정착지와 인구</h2>${gm?'<div class="button-pair"><button class="button outline small" data-do="settlement-new">인접 정착지 확장</button><button class="button outline small" data-do="urban-link">도시권 연결 관리</button></div>':''}</div><p class="helper">총인구 ${num(t.population)}명 · ${all.length}개 정착지. 인구 기준과 밀집도 단계는 미확정 기준안이며 GM이 발전 단계를 결정합니다.</p><div class="settlement-grid">${all.map(s=>{const stage=SETTLEMENT_STAGES[s.stage], advised=SETTLEMENT_STAGES[recommendedStage(s.population)],tile=state.world.tiles.find(t=>t.id===s.tileId);return `<article class="settlement-item"><span class="eyebrow">STAGE ${s.stage} · ${stage.name}</span><h3>${esc(s.name)}</h3><p>인구 <strong>${num(s.population)}명</strong> · 좌표 ${esc(s.tileId)}</p><p class="settlement-composition">${s.composition.map(g=>`${esc(g.race)} ${num(g.population)}명`).join(' · ') || '주민 없음'}</p><p>밀집도 ${DENSITIES[s.density]} · 주거·시설 ${tile?`${tile.developed || 0}%`:'관찰 정보 없음'}</p><small>수용 기준안 ${num(stage.min)}~${num(stage.max)}명<br>현재 인구 참고 단계: ${advised.name}</small>${gm?`<button class="text-button" data-do="settlement-edit" data-id="${esc(s.id)}">단계·밀집도 관리 →</button>`:''}</article>`;}).join('')}</div><div class="urban-regions"><strong>도시권</strong>${regions.length?regions.map(r=>`<p>${r.map(s=>esc(s.name)).join(' ↔ ')} · 총 ${num(r.reduce((n,s)=>n+s.population,0))}명</p>`).join(''):'<p class="helper">연결된 도시권이 없습니다.</p>'}</div><div class="section-heading"><h3>주요 NPC</h3>${gm?'<button class="button outline small" data-do="npc-new">주요 NPC 기록 +</button>':''}</div><p class="helper">일반 주민은 총인구로 관리합니다. 주요 NPC는 그 인구에 포함된 인물 기록이며, 추가한다고 인구가 증가하지 않습니다. 신관은 신과 신관 화면에서 관리합니다.</p><div class="notable-npcs">${t.notableNpcs.length?t.notableNpcs.map(n=>`<article><strong>${esc(n.name)}</strong><small>${esc(n.race)} · ${esc(n.title)} · ${esc(all.find(s=>s.id===n.settlementId)?.name || '')}</small>${n.notes?`<p>${esc(n.notes)}</p>`:''}${gm?`<button class="text-button" data-do="npc-edit" data-id="${esc(n.id)}">인물 기록 수정 →</button>`:''}</article>`).join(''):'<p class="helper">개별적으로 기록된 주요 NPC가 없습니다.</p>'}</div></section>`;
+}
+function populationRow(group={race:'',population:1,consumption:30}) {
+  return `<fieldset class="population-row"><legend>종족 구성</legend><div class="three-inputs"><label class="field">종족<input data-group-field="race" value="${esc(group.race)}" maxlength="40" list="race-names" required></label><label class="field">인구<input data-group-field="population" type="number" value="${group.population}" min="1" max="1000000" required></label><label class="field">1인 월간 소비<select data-group-field="consumption">${[0,15,30,60].map(v=>`<option value="${v}" ${v===group.consumption?'selected':''}>${v}</option>`).join('')}</select></label></div><button type="button" class="text-button" data-do="population-remove">이 종족 행 제거</button></fieldset>`;
+}
+function showPopulation() {
+  const t=selectedTribe();
+  showModal('종족별 인구 관리', `<form id="population-form"><datalist id="race-names">${Object.keys(RACE_CONSUMPTION).map(r=>`<option value="${r}"></option>`).join('')}</datalist><div id="population-rows">${t.populationGroups.map(populationRow).join('')}</div><button type="button" class="button outline small" data-do="population-add">종족 추가</button><p id="population-total" class="helper" role="status"></p><h3>정착지별 인구 배분</h3><p class="helper">종족별 인구의 합계와 정착지 배분 합계가 같아야 합니다. 정착지가 하나면 자동으로 배분합니다.</p><div id="settlement-allocations"></div>${textarea('인구 변경 사유','reason','출생·사망·이주 등 실제 변화를 기록하세요.',300)}<p class="helper">소비량 0·15·30·60은 규칙을 따르며 종족별 배정은 임시안입니다. 기존 노동 배치보다 적은 인구는 저장할 수 없습니다.</p>${submit('인구 구성 저장')}</form>`);
+  rebuildPopulationAllocations();
+  updatePopulationTotals();
+}
+function rebuildPopulationAllocations(){
+  const form=document.querySelector('#population-form');if(!form)return;
+  const t=selectedTribe(),cache=new Map([...form.querySelectorAll('[data-allocation-id]')].map(i=>[JSON.stringify([i.dataset.allocationId,i.dataset.allocationRace]),i.value]));
+  const races=[...form.querySelectorAll('[data-group-field="race"]')].map(i=>i.value.trim()).filter((r,i,a)=>r&&a.indexOf(r)===i);
+  form.querySelector('#settlement-allocations').innerHTML=t.settlements.map(s=>`<fieldset class="population-row"><legend>${esc(s.name)}</legend>${races.map(race=>{const key=JSON.stringify([s.id,race]),value=cache.get(key) ?? s.composition.find(g=>g.race===race)?.population ?? 0;return `<label class="field">${esc(race)} 배치 인구<input data-allocation-id="${esc(s.id)}" data-allocation-race="${esc(race)}" type="number" min="0" max="1000000" value="${value}" ${t.settlements.length===1?'readonly':''} required></label>`;}).join('')}</fieldset>`).join('');
+}
+function updatePopulationTotals() {
+  const form=document.querySelector('#population-form');if(!form)return;
+  const rows=[...form.querySelectorAll('#population-rows .population-row')];
+  const total=rows.reduce((n,row)=>n+Number(row.querySelector('[data-group-field="population"]').value),0);
+  const consumption=rows.reduce((n,row)=>n+Number(row.querySelector('[data-group-field="population"]').value)*Number(row.querySelector('[data-group-field="consumption"]').value),0);
+  const allocations=[...form.querySelectorAll('[data-allocation-id]')];
+  if(selectedTribe().settlements.length===1)for(const input of allocations){const row=rows.find(row=>row.querySelector('[data-group-field="race"]').value.trim()===input.dataset.allocationRace);input.value=row?Number(row.querySelector('[data-group-field="population"]').value):0;}
+  const assigned=allocations.reduce((n,input)=>n+Number(input.value),0);
+  form.querySelector('#population-total').textContent=`총인구 ${num(total)}명 · 월 소비 ${num(consumption)} · 정착지 배분 ${num(assigned)}명${total!==assigned?' — 합계를 맞춰주세요.':''}`;
+}
+function availableSettlementTiles(sourceId) {
+  const t=selectedTribe(),source=t.settlements.find(s=>s.id===sourceId),tile=state.world.tiles.find(t=>t.id===source?.tileId);
+  return tile?neighbors(tile,state.world.width,state.world.height).map(id=>state.world.tiles.find(t=>t.id===id)).filter(t=>t&&!t.settlementId&&!['ocean','coast','lake'].includes(t.terrain)&&t.elevation!=='mountain'):[];
+}
+function expansionOptions(sourceId) {
+  const tiles=availableSettlementTiles(sourceId);
+  return tiles.length?tiles.map(t=>`<option value="${t.id}" ${t.id===selected?'selected':''}>(${t.x}, ${t.y}) ${TERRAINS[t.terrain].name}</option>`).join(''):'<option value="">확장 가능한 인접 육지가 없습니다</option>';
+}
+function showSettlement(id) {
+  const t=selectedTribe(),current=t.settlements.find(s=>s.id===id),source=t.settlements.find(s=>s.population>0),tile=current?state.world.tiles.find(t=>t.id===current.tileId):null;
+  if(!current&&!source){toast('먼저 인구를 배분하세요.',true);return;}
+  showModal(current?'정착지 단계·밀집도 관리':'인접 정착지 확장', `<form data-action="settlement"><input type="hidden" name="operation" value="${current?'update':'create'}">${current?`<input type="hidden" name="id" value="${esc(current.id)}"><p class="helper">${num(current.population)}명 · 인구 참고 단계 ${SETTLEMENT_STAGES[recommendedStage(current.population)].name}. 단계가 자동 승급되지는 않습니다.</p>`:`<label class="field">이주할 기존 정착지<select name="sourceId" data-settlement-source>${t.settlements.filter(s=>s.population>0).map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${num(s.population)}명</option>`).join('')}</select></label><label class="field">확장할 인접 타일<select name="tileId" required>${expansionOptions(source.id)}</select></label><label class="field">이주 종족<select name="race">${source.composition.map(g=>`<option value="${esc(g.race)}">${esc(g.race)} · ${num(g.population)}명</option>`).join('')}</select></label>${input('이주 인구','population',Math.min(10,source.composition[0].population),'type="number" min="1" max="1000000" required')}`}${input('정착지 이름','name',current?.name || '','maxlength="60" required')}<div class="two-inputs"><label class="field">정착지 단계<select name="stage">${SETTLEMENT_STAGES.map((s,i)=>`<option value="${i}" ${i===(current?.stage || 0)?'selected':''}>${i} · ${s.name} (${num(s.min)}~${num(s.max)}명, 기준안)</option>`).join('')}</select></label><label class="field">건물 밀집도<select name="density">${DENSITIES.map((d,i)=>`<option value="${i}" ${i===(current?.density || 0)?'selected':''}>${d}</option>`).join('')}</select></label></div>${input('주거·시설의 타일 점유율 (%)','developed',current?(tile?.developed || 0):25,'type="number" min="0" max="100" required')}<p class="helper">점유율은 GM의 현장 평가입니다. 시험 계산으로 육상 생산 한도와 서식 공간을 비례해 줄이며, 점유율 증가 시 동물·식물 자원도 줄어듭니다. 점유율을 낮춰도 잃은 자원이 즉시 돌아오지는 않습니다. 이주와 확장 자체는 총인구를 늘리지 않습니다.</p>${textarea('정착지 변경 사유','reason','건축·이주·철거 등의 근거를 기록하세요.',300)}${submit(current?'정착지 변경 저장':'새 정착지 건설')}</form>`);
+}
+function showUrbanLink() {
+  const all=selectedTribe().settlements;
+  if(all.length<2){showModal('도시권 연결 관리','<p>정착지를 두 곳 이상 세운 뒤 인접한 정착지를 연결하세요.</p>');return;}
+  const options=all.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} (${esc(s.tileId)})</option>`).join('');
+  showModal('도시권 연결 관리', `<form data-action="urban-link"><label class="field">첫 정착지<select name="a">${options}</select></label><label class="field">둘째 정착지<select name="b">${all.map((s,i)=>`<option value="${esc(s.id)}" ${i===1?'selected':''}>${esc(s.name)} (${esc(s.tileId)})</option>`).join('')}</select></label><label class="field">작업<select name="operation"><option value="add">도시권 연결</option><option value="remove">연결 해제</option></select></label><p class="helper">같은 부족의 인접 정착지를 연결합니다. 생산권이 겹쳐도 자원과 노동력은 중복 계산하지 않습니다.</p>${textarea('도시권 변경 사유','reason','도로·교역·행정 통합 등의 근거를 기록하세요.',300)}${submit('도시권 변경 저장')}</form>`);
+}
+function showNpc(id) {
+  const t=selectedTribe(),npc=t.notableNpcs.find(n=>n.id===id);
+  showModal('주요 NPC 기록', `<form data-action="notable-npc"><input type="hidden" name="operation" value="save"><input type="hidden" name="id" value="${esc(npc?.id || '')}">${input('NPC 이름','name',npc?.name || '','maxlength="40" required')}${input('NPC 종족','race',npc?.race || t.race,'maxlength="40" required')}${input('NPC 역할','title',npc?.title || '','maxlength="60" required')}<label class="field">소속 정착지<select name="settlementId">${t.settlements.map(s=>`<option value="${esc(s.id)}" ${s.id===npc?.settlementId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label><label class="field">인물 설명<textarea name="notes" maxlength="1000" rows="3">${esc(npc?.notes || '')}</textarea></label><p class="helper">이 인물의 기록은 해당 부족의 신·신관에게도 보입니다. 개별 기록은 이미 집계된 총인구에 추가로 더하지 않습니다.</p>${textarea('NPC 변경 사유','reason','인물의 등장이나 변화 근거를 기록하세요.',300)}${submit('인물 기록 저장')}</form>${npc?`<button class="text-button" data-do="npc-remove" data-id="${esc(npc.id)}">개별 기록에서 제외</button>`:''}`);
+}
+
 function civilizationPage() {
   const t = selectedTribe();
   if (!t) return `<section class="card large-empty"><span>⌂</span><h2>아직 첫 부족이 선택되지 않았어요</h2><p>신이 이미 존재하는 부족 중 하나를 선택하면<br>이곳에서 문명의 살림을 관리할 수 있습니다.</p></section>`;
-  const total = Object.values(t.food).reduce((a,b)=>a+b,0), consumption = t.population*t.consumption;
-  return `<div class="civilization-grid"><section class="card padded"><div class="section-heading"><h2>${icon('home')} ${esc(t.name)}</h2><span class="tag">야영지 · 시험 기준</span></div><p class="description">${esc(t.description)}</p><div class="info-grid">${[['종족',t.race],['인구',`${num(t.population)}명`],['신도',`${num(t.followers)}명`],['월간 기본 신앙',`${num(t.followers*.5)}점`],['종족별 소비',`${t.consumption} / 명 / 월`],['식량 여유',`${(total/consumption).toFixed(1)}개월`]].map(([label,value])=>`<div><small>${label}</small><strong>${value}</strong></div>`).join('')}</div><div class="notice">${icon('eye')}<p>출생·사망·부족 확장과 시설 효과는 GM이 판정합니다. 시작 부족 선택이 곧 전원 개종을 의미하지는 않습니다.</p></div>${state.role==='gm'?'<button class="button outline" data-do="adjust">부족 수치 조정</button>':''}</section>
+  const total = Object.values(t.food).reduce((a,b)=>a+b,0), consumption = t.monthlyConsumption ?? t.population*t.consumption;
+  return `<div class="civilization-grid"><section class="card padded"><div class="section-heading"><h2>${icon('home')} ${esc(t.name)}</h2><span class="tag">${SETTLEMENT_STAGES[t.settlements[0].stage].name} · 기준안</span></div><p class="description">${esc(t.description)}</p><div class="info-grid">${[['종족',t.populationGroups.length>1?'다종족':t.populationGroups[0].race],['인구',`${num(t.population)}명`],['신도',`${num(t.followers)}명`],['월간 기본 신앙',`${num(t.followers*.5)}점`],['월간 총 소비',`${num(consumption)} 식량`],['식량 여유',consumption?`${(total/consumption).toFixed(1)}개월`:'소비 없음']].map(([label,value])=>`<div><small>${label}</small><strong>${value}</strong></div>`).join('')}</div><div class="notice">${icon('eye')}<p>출생·사망·정착지 확장과 밀집도·인구 변화는 GM이 기록합니다. 시작 부족 선택이 곧 전원 개종을 의미하지는 않습니다.</p></div>${state.role==='gm'?'<div class="button-pair"><button class="button outline" data-do="adjust">부족 수치 조정</button><button class="button outline" data-do="population">종족별 인구 관리</button></div>':''}<div class="population-composition">${t.populationGroups.map(g=>`<div><strong>${esc(g.race)} ${num(g.population)}명</strong><small>월 소비 ${g.consumption} × ${num(g.population)} = ${num(g.consumption*g.population)}</small></div>`).join('')}</div></section>
   <section class="card padded"><div class="section-heading"><h2>${icon('food')} 식량과 노동</h2>${['gm','priest'].includes(state.role)?'<button class="text-button" data-do="workers">노동 배치 →</button>':''}</div><div class="food-stocks">${[['meat','고기','♧'],['grain','곡물','♨'],['fruit','과일','❧']].map(([key,name,symbol])=>`<div><span>${symbol}</span><strong>${num(t.food[key])}</strong><small>${name}</small></div>`).join('')}</div><div class="labor-list">${Object.entries(ACTIVITY).map(([key,name])=>`<div><span>${name}</span><div class="labor-bar"><i style="width:${t.workers[key]/t.population*100}%"></i></div><strong>${t.workers[key]}명</strong></div>`).join('')}</div><p class="helper">노동자 1인 ${state.settings.workerOutput} · 지형 한도 ×${state.settings.capacityScale} (시험용)<br>생산권: 정착지와 인접 6타일. 재고는 자동 저장되며 GM 시간 진행 시 정산됩니다.</p></section>
+  ${settlementsPanel(t)}
   <section class="card padded technology-card"><div class="section-heading"><div><span class="eyebrow">KNOWLEDGE & DISCOVERY</span><h2>기술의 씨앗</h2></div>${state.role==='gm'?'<button class="button outline small" data-do="technology">기술 기록 +</button>':''}</div><p class="helper">${state.role==='gm'?'전체 기술 트리 · 카드를 누르면 발전 단계를 기록합니다.':'해금된 기술만 표시합니다. GM이 발견 이상으로 기록하면 해금됩니다.'}<br>카드에 커서를 올리거나 초점을 맞추면 설명을 볼 수 있습니다. 모바일에서는 카드를 누르세요.</p>${renderTechnologyTree()}<p class="helper">문명 VI에서 착안한 TRPG용 재구성 · 선행 기술은 연구 방향을 안내합니다. 발견 → 실험 → 실용화 → 보급은 GM이 판정하며 효과는 자동 적용되지 않습니다.</p></section></div>`;
 }
 function renderTechnologyTree() {
@@ -370,7 +427,7 @@ function showTribes() {
 function showPriest() {
   const tribe = selectedTribe();
   if (!tribe) { toast('신이 먼저 시작 부족을 선택해야 합니다.', true); return; }
-  showModal('신의 목소리를 듣는 자', `<form data-action="create-priest">${input('신관의 이름','name','','required maxlength="30"')}<div class="notice">${icon('people')}<p>${esc(tribe.name)}의 ${esc(tribe.race)}으로 시작합니다. 능력치 100포인트를 배분하세요.</p></div><div class="three-inputs">${input('힘','strength',35,'type="number" min="0" max="100" required')}${input('지능','intelligence',35,'type="number" min="0" max="100" required')}${input('사회성','social',30,'type="number" min="0" max="100" required')}</div><p id="point-total" class="point-total">사용한 포인트 100 / 100</p>${submit('대지 위에 첫걸음 내딛기')}</form>`);
+  showModal('신의 목소리를 듣는 자', `<form data-action="create-priest">${input('신관의 이름','name','','required maxlength="30"')}<div class="notice">${icon('people')}<p>${esc(tribe.name)}의 구성원으로 시작합니다. 능력치 100포인트를 배분하세요.</p></div>${tribe.populationGroups.length>1?`<label class="field">신관 종족<select name="race">${tribe.populationGroups.map(g=>`<option>${esc(g.race)}</option>`).join('')}</select></label>`:`<p class="helper">종족: ${esc(tribe.populationGroups[0].race)}</p>`}<div class="three-inputs">${input('힘','strength',35,'type="number" min="0" max="100" required')}${input('지능','intelligence',35,'type="number" min="0" max="100" required')}${input('사회성','social',30,'type="number" min="0" max="100" required')}</div><p id="point-total" class="point-total">사용한 포인트 100 / 100</p>${submit('대지 위에 첫걸음 내딛기')}</form>`);
 }
 function showRequest() {
   const isGod = state.role==='god';
@@ -468,7 +525,7 @@ document.addEventListener('click', async event => {
   if(tile){selected=tile.dataset.tile;renderGame();return;}
   const element=event.target.closest('[data-do]');if(!element)return;
   const command=element.dataset.do;
-  const handlers={ create:showCreate,'saved-games':showSavedGames,import:showImport,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
+  const handlers={ population:showPopulation,'settlement-new':()=>showSettlement(),'urban-link':showUrbanLink,'npc-new':()=>showNpc(),create:showCreate,'saved-games':showSavedGames,import:showImport,join:()=>showJoin(),invite:showInvite,'create-god':showGod,'select-tribe':showTribes,'create-priest':showPriest,request:showRequest,requests:showRequests,roll:showRoll,workers:showWorkers,narrate:showNarrate,advance:showAdvance,adjust:showAdjust,settings:showSettings,technology:showTechnology,'gm-move':showGmMove,'edit-tile':showTileEditor };
   if(handlers[command]){handlers[command]();return;}
   if(command==='close')dialog.close();
   if(command==='tab'){tab=element.dataset.tab;renderGame();}
@@ -484,6 +541,18 @@ document.addEventListener('click', async event => {
   if(command==='home'){state=null;selected=null;history.pushState({},'','/');renderLanding();}
   if(command==='explore')await action({type:'explore',tileId:selected});
   if(command==='reveal')await action({type:'reveal',role:element.dataset.role,tileId:selected});
+  if(command==='population-add'){
+    const rows=dialog.querySelector('#population-rows');
+    if(rows.children.length>=30){toast('종족 구성은 최대 30개입니다.',true);return;}
+    rows.insertAdjacentHTML('beforeend',populationRow());rebuildPopulationAllocations();updatePopulationTotals();
+  }
+  if(command==='population-remove'){
+    if(dialog.querySelectorAll('#population-rows .population-row').length<=1){toast('종족 구성은 한 행 이상 필요합니다.',true);return;}
+    element.closest('.population-row').remove();rebuildPopulationAllocations();updatePopulationTotals();
+  }
+  if(command==='settlement-edit')showSettlement(element.dataset.id);
+  if(command==='npc-edit')showNpc(element.dataset.id);
+  if(command==='npc-remove')showModal('주요 NPC 기록에서 제외',`<form data-action="notable-npc"><input type="hidden" name="operation" value="remove"><input type="hidden" name="id" value="${esc(element.dataset.id)}">${textarea('NPC 변경 사유','reason','총인구는 바뀌지 않습니다. 기록 제외 사유를 적어주세요.',300)}${submit('개별 기록에서 제외')}</form>`);
   if(command==='resolve')showResolve(element.dataset.id);
   if(command==='tech-node'){
     if(state.role==='gm')showTechnology(element.dataset.name);
@@ -513,9 +582,17 @@ document.addEventListener('keydown', event=>{
   if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-tile]')){event.preventDefault();selected=event.target.dataset.tile;renderGame();}
 });
 document.addEventListener('input',event=>{
+  if(event.target.closest('#population-form'))updatePopulationTotals();
   if(event.target.closest('[data-action="create-priest"]')){
     const form=event.target.form,total=['strength','intelligence','social'].reduce((n,key)=>n+Number(form.elements[key].value),0);
     const label=document.querySelector('#point-total');label.textContent=`사용한 포인트 ${total} / 100`;label.classList.toggle('danger-text',total!==100);
+  }
+});
+document.addEventListener('change',event=>{
+  if(event.target.matches('[data-settlement-source]')){event.target.form.elements.tileId.innerHTML=expansionOptions(event.target.value);const source=selectedTribe().settlements.find(s=>s.id===event.target.value);event.target.form.elements.race.innerHTML=source.composition.map(g=>`<option value="${esc(g.race)}">${esc(g.race)} · ${num(g.population)}명</option>`).join('');}
+  if(event.target.matches('[data-group-field="race"]')){
+    if(Object.hasOwn(RACE_CONSUMPTION,event.target.value))event.target.closest('.population-row').querySelector('[data-group-field="consumption"]').value=RACE_CONSUMPTION[event.target.value];
+    rebuildPopulationAllocations();updatePopulationTotals();
   }
 });
 document.addEventListener('submit', async event=>{
@@ -523,6 +600,11 @@ document.addEventListener('submit', async event=>{
   event.preventDefault();
   if(form.dataset.busy)return;
   const data=Object.fromEntries(new FormData(form));
+  if(form.id==='population-form'){
+    const groups=[...form.querySelectorAll('#population-rows .population-row')].map(row=>({race:row.querySelector('[data-group-field="race"]').value,population:Number(row.querySelector('[data-group-field="population"]').value),consumption:Number(row.querySelector('[data-group-field="consumption"]').value)}));
+    const allocations=selectedTribe().settlements.map(s=>{const composition=[...form.querySelectorAll('[data-allocation-id]')].filter(i=>i.dataset.allocationId===s.id&&Number(i.value)>0).map(i=>({race:i.dataset.allocationRace,population:Number(i.value)}));return {id:s.id,population:composition.reduce((n,g)=>n+g.population,0),composition};});
+    await action({type:'population',groups,allocations,reason:data.reason});return;
+  }
   if(form.id==='import-form'){
     form.dataset.busy='true';const button=form.querySelector('[type=submit]');button.disabled=true;
     try {
@@ -560,8 +642,9 @@ document.addEventListener('submit', async event=>{
     return;
   }
   if(form.dataset.action){
-    const numeric=['strength','intelligence','social','a','b','divineA','divineB','cost','hunt','gather','farm','fish','hours','value','workerOutput','capacityScale','recoveryRate','eventChance','stage','wildlife','plants'];
+    const numeric=['strength','intelligence','social','divineA','divineB','cost','hunt','gather','farm','fish','hours','value','workerOutput','capacityScale','recoveryRate','eventChance','stage','density','developed','population','wildlife','plants'];
     for(const key of numeric)if(data[key]!==undefined)data[key]=Number(data[key]);
+    if(form.dataset.action==='roll')for(const key of ['a','b'])data[key]=Number(data[key]);
     await action({type:form.dataset.action,...data});
   }
 });
