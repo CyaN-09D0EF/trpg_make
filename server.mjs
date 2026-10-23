@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createGame, applyAction, joinGame, projectedState, GameError, ROLES } from './lib/game.mjs';
 import { RoomStore } from './lib/storage.mjs';
+import { renderRulebook } from './lib/rulebook.mjs';
 import { restoreCampaign, MAX_CAMPAIGN_BYTES } from './lib/campaign.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -15,7 +16,7 @@ const safeEqual = (a, b) => {
   const first = Buffer.from(a), second = Buffer.from(b);
   return first.length === second.length && timingSafeEqual(first, second);
 };
-const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8' };
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
 
 async function body(req, maxBytes = 16384) {
   let size = 0; const chunks = [];
@@ -164,6 +165,11 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
       }
       if (url.pathname.startsWith('/api/')) throw new GameError('찾을 수 없는 API입니다.', 404);
       if (req.method !== 'GET' && req.method !== 'HEAD') throw new GameError('지원하지 않는 요청입니다.', 405);
+      if ((url.pathname === '/rulebook.md' && !url.searchParams.has('raw')) || url.pathname === '/rulebook') {
+        const source=await readFile(path.join(ROOT,'docs/rulebook.md'),'utf8');
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'});
+        return res.end(req.method === 'HEAD' ? undefined : renderRulebook(source));
+      }
       let file;
       if (url.pathname === '/' || /^\/r\/[A-Z0-9]{6}$/.test(url.pathname)) file = path.join(ROOT, 'public/index.html');
       else if (url.pathname === '/world.mjs') file = path.join(ROOT, 'lib/world.mjs');
@@ -171,7 +177,9 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
       else if (url.pathname === '/demography.mjs') file = path.join(ROOT, 'lib/demography.mjs');
       else if (url.pathname === '/settlements.mjs') file = path.join(ROOT, 'lib/settlements.mjs');
       else if (url.pathname === '/rulebook.md') file = path.join(ROOT, 'docs/rulebook.md');
-      else if (['/app.js', '/style.css', '/favicon.svg'].includes(url.pathname)) file = path.join(ROOT, 'public', url.pathname.slice(1));
+      else if (url.pathname === '/katex/katex.min.css') file = path.join(ROOT,'node_modules/katex/dist/katex.min.css');
+      else if (/^\/katex\/fonts\/KaTeX_[A-Za-z0-9_-]+\.(woff2?|ttf)$/.test(url.pathname)) file = path.join(ROOT,'node_modules/katex/dist/fonts',path.basename(url.pathname));
+      else if (['/app.js', '/style.css', '/favicon.svg', '/rulebook.css', '/rulebook.js'].includes(url.pathname)) file = path.join(ROOT, 'public', url.pathname.slice(1));
       else throw new GameError('파일을 찾을 수 없습니다.', 404);
       const content = await readFile(file);
       res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
