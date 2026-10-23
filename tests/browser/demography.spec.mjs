@@ -8,12 +8,13 @@ test('birth reference, GM rates and housing policies drive monthly births and su
   applyAction(campaign,'god',{type:'create-god',name:'신',realm:'숲'});applyAction(campaign,'god',{type:'select-tribe',tribeId:'dawn'});
   applyAction(campaign,'gm',{type:'population',groups:[{race:'인간',population:1000,consumption:30}],reason:'시험 인구'});
   campaign.world.tribes[0].food.fruit=1e7;
+  campaign.world.tribes[0].mortalityModifier=0; // This scenario isolates the housing/birth policy; mortality is covered separately.
   const restored=await (await request.post('/api/rooms/import',{data:{campaign,playerName:'GM'}})).json();
   const {id,token,state}=restored;
   await page.goto('/');await page.evaluate(s=>localStorage.setItem('civilization.sessions',JSON.stringify([{id:s.id,role:'gm',token:s.token}])),restored);
   await page.goto(`/r/${id}`);await page.getByRole('button',{name:'문명 관리',exact:true}).click();
   await expect(page.locator('.birth-forecast')).toContainText('월 기대 2.000명');
-  await page.getByText('17종족 계수 비교 · 인간 = 1.00',{exact:true}).click();
+  await page.getByText('17종족 인구 특성 비교 · v0.3',{exact:true}).click();
   await expect(page.locator('.fertility-row')).toHaveCount(17);
   await expect(page.locator('.fertility-row').filter({hasText:'코볼트'})).toContainText('2.50');
   await page.getByRole('button',{name:'세계 지도',exact:true}).click();
@@ -49,7 +50,7 @@ test('birth reference, GM rates and housing policies drive monthly births and su
   await expect(god.locator('.last-births')).toContainText('0명');await expect(god.getByRole('button',{name:'출생 환경 관리'})).toHaveCount(0);
   await context.close();
   await page.setViewportSize({width:390,height:844});
-  await page.getByText('17종족 계수 비교 · 인간 = 1.00',{exact:true}).click();
+  await page.getByText('17종족 인구 특성 비교 · v0.3',{exact:true}).click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.locator('.demography-panel').screenshot({path:testInfo.outputPath('birth-reference-mobile.png')});
   const exported=await (await request.get(`/api/rooms/${id}/export`,{headers:{Authorization:`Bearer ${token}`}})).json();

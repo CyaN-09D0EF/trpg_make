@@ -155,7 +155,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
           return;
         }
         if (endpoint === 'actions' && req.method === 'POST') {
-          const input = await body(req);
+          const input = await body(req, 8 * 1024 * 1024);
           await store.mutate(id, current => { const currentRole = authenticate(current, req); applyAction(current, currentRole, input); });
           broadcast(id);
           return json(200, projectedState(store.rooms.get(id), role, online(id)));
@@ -167,6 +167,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
       let file;
       if (url.pathname === '/' || /^\/r\/[A-Z0-9]{6}$/.test(url.pathname)) file = path.join(ROOT, 'public/index.html');
       else if (url.pathname === '/world.mjs') file = path.join(ROOT, 'lib/world.mjs');
+      else if (url.pathname === '/lifecycle.mjs') file = path.join(ROOT, 'lib/lifecycle.mjs');
       else if (url.pathname === '/demography.mjs') file = path.join(ROOT, 'lib/demography.mjs');
       else if (url.pathname === '/settlements.mjs') file = path.join(ROOT, 'lib/settlements.mjs');
       else if (url.pathname === '/rulebook.md') file = path.join(ROOT, 'docs/rulebook.md');

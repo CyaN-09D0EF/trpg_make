@@ -34,8 +34,8 @@ test('population composition determines exact food consumption and settlement al
   assert.throws(()=>applyAction(r,'gm',{...change,groups:[change.groups[0],change.groups[0]]}),/오류/);
   applyAction(r,'gm',expansion(r));assert.equal(t.population,56);
   assert.deepEqual(t.settlements.map(s=>s.population),[46,10]);
-  assert.deepEqual(t.settlements[0].composition,[{race:'인간',population:20},{race:'르나르',population:20},{race:'엔트',population:6}]);
-  assert.deepEqual(t.settlements[1].composition,[{race:'인간',population:10}]);
+  assert.deepEqual(t.settlements[0].composition.map(({race,population})=>({race,population})),[{race:'인간',population:20},{race:'르나르',population:20},{race:'엔트',population:6}]);
+  assert.deepEqual(t.settlements[1].composition.map(({race,population})=>({race,population})),[{race:'인간',population:10}]);
   assert.throws(()=>applyAction(r,'gm',{...change,allocations:t.settlements.map(s=>({id:s.id,population:1}))}),/합계/);
   const groups=[{race:'인간',population:60,consumption:30}];
   applyAction(r,'gm',{...change,groups,allocations:t.settlements.map((s,i)=>({id:s.id,population:i?15:45}))});
