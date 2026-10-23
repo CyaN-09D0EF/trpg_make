@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createGame, applyAction } from '../../lib/game.mjs';
-import { generateWorld } from '../../lib/world.mjs';
+import { applyAction } from '../../lib/game.mjs';
+import { createClassicGame as createGame, classicWorld as generateWorld } from '../fixtures.mjs';
 
 test('v0.3 comparison, GM age distribution, adult-only births and labor, and probabilistic natural deaths',async({page,request},testInfo)=>{
   const campaign=createGame({id:'AGE123',name:'세대의 기록',seed:'life-ui',gmName:'GM',gmHash:'old',invite:'old'});

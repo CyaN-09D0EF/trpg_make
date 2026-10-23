@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createGame, applyAction } from '../../lib/game.mjs';
-import { generateWorld } from '../../lib/world.mjs';
+import { applyAction } from '../../lib/game.mjs';
+import { createClassicGame as createGame, classicWorld as generateWorld } from '../fixtures.mjs';
 
 test('GM manages mixed population, settlement density, adjacent expansion, city regions and major NPCs', async ({ page, browser, request }, testInfo) => {
   const campaign=createGame({id:'OLD123',name:'정착지의 시대',seed:'settlement-ui',gmName:'GM',gmHash:'old',invite:'old'});

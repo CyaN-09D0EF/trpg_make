@@ -1,8 +1,9 @@
+import { createClassicGame as createGame } from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FERTILITY_V01, fertilityOf, applyMonthlyBirths, birthForecast } from '../lib/demography.mjs';
 import { groupsOf, settlementsOf, monthlyConsumption } from '../lib/settlements.mjs';
-import { createGame, applyAction, projectedState } from '../lib/game.mjs';
+import { applyAction, projectedState } from '../lib/game.mjs';
 import { restoreCampaign } from '../lib/campaign.mjs';
 const settings={humanBirthRate:.002};
 function tribe(race='인간',population=1000,consumption=30){return {id:'dawn',name:'여명',tileId:'5,6',race,population,consumption,food:{fruit:1e8,grain:0,meat:0},workers:{farm:0,hunt:0,gather:0,fish:0}};}

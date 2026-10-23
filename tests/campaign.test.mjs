@@ -1,16 +1,16 @@
+import { createClassicGame as createGame, classicWorld } from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createApp } from '../server.mjs';
-import { createGame, applyAction, projectedState } from '../lib/game.mjs';
-import { generateWorld } from '../lib/world.mjs';
+import { applyAction, projectedState } from '../lib/game.mjs';
 import { restoreCampaign } from '../lib/campaign.mjs';
 
 function fixture(legacy=false) {
   const r=createGame({id:'OLD123',name:'돌아온 세계',seed:'restore-test',gmName:'이전 GM',gmHash:'old-hash',invite:'old-invite'});
-  if(legacy){r.world=generateWorld(r.seed,{width:22,height:14});r.knowledge={god:{},priest:{}};}
+  if(legacy){r.world=classicWorld(r.seed,{width:22,height:14});r.knowledge={god:{},priest:{}};}
   applyAction(r,'god',{type:'create-god',name:'네뷸라',realm:'곤충'});
   applyAction(r,'god',{type:'select-tribe',tribeId:'dawn'});
   applyAction(r,'priest',{type:'create-priest',name:'하루',strength:30,intelligence:40,social:30});

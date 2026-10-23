@@ -1,6 +1,7 @@
+import { createClassicGame as createGame } from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, applyAction, projectedState, capacity } from '../lib/game.mjs';
+import { applyAction, projectedState, capacity } from '../lib/game.mjs';
 import { settlementsOf, monthlyConsumption, recommendedStage, cityRegions } from '../lib/settlements.mjs';
 import { neighbors } from '../lib/world.mjs';
 import { restoreCampaign } from '../lib/campaign.mjs';
