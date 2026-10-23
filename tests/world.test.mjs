@@ -1,3 +1,4 @@
+import { assertRiverNetwork } from './river-helpers.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateWorld, TRIBE_CATALOG, RACE_CONSUMPTION, neighbors, edgeNeighbors, hexDistance } from '../lib/world.mjs';
@@ -42,13 +43,7 @@ test('generated geography has real coasts, inland lakes, connected river mouths 
       if(tile.terrain==='lake'){lakes++;assert.ok(tile.y>0&&tile.y<height-1);}
       for(const edge of tile.river){const next=byId.get(edgeNeighbors(tile,width,height)[edge]);assert.ok(next?.river.includes((edge+3)%6));}
     }
-    // Every connected river network reaches actual water, including sources on hills.
-    const pending=new Set(tiles.filter(t=>t.river.length).map(t=>t.id));
-    while(pending.size){
-      const queue=[byId.get(pending.values().next().value)];pending.delete(queue[0].id);
-      for(let j=0;j<queue.length;j++)for(const edge of queue[j].river){const id=edgeNeighbors(queue[j],width,height)[edge];if(pending.delete(id))queue.push(byId.get(id));}
-      assert.ok(queue.some(wet),'river network must have an outlet');
-    }
+    assertRiverNetwork(world);
     const homes=tribes.map(t=>byId.get(t.tileId));
     for(let j=0;j<homes.length;j++){
       const tile=homes[j];assert.equal(tile.settlementId,tribes[j].id);assert.ok(!wet(tile));
