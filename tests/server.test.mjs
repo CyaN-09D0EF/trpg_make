@@ -25,7 +25,7 @@ test('three-player API: authentication, private SSE, concurrent writes, persiste
   assert.equal((await request(prefix+'/join',{role:'god',name:'도둑',invite:state.invite})).status,409);
   assert.equal((await request(prefix+'/actions',{type:'advance',days:30},priest)).status,403);
   await request(prefix+'/actions',{type:'create-god',name:'네뷸라',realm:'곤충'},god);
-  await request(prefix+'/actions',{type:'select-tribe',tribeId:'dawn'},god);
+  await request(prefix+'/actions',{type:'select-tribe',tribeId:state.tribes[0].id},god);
   const failures=await request(prefix+'/actions',{type:'create-priest',name:'하루',strength:100,intelligence:100,social:100},priest);
   assert.equal(failures.status,400);
   assert.equal((await request(prefix+'/state',undefined,gm)).data.priest,null);
@@ -44,7 +44,7 @@ test('three-player API: authentication, private SSE, concurrent writes, persiste
   const summary=(await request(prefix+'/summary',undefined,priest));
   assert.equal(summary.status,200);assert.equal(summary.data.name,'동시 접속 세계');
   assert.equal(summary.data.role,'priest');assert.equal(summary.data.width,60);assert.equal(summary.data.height,38);
-  assert.equal(summary.data.tribe,'여명 부족');
+  assert.equal(summary.data.tribe,state.tribes[0].name);
   for(const field of ['world','knowledge','actions','logs','players','invite','seed','god','priest'])assert.equal(summary.data[field],undefined,field);
   assert.equal((await request(prefix+'/summary')).status,401);
   assert.equal((await request(prefix+'/summary',undefined,'wrong')).status,401);

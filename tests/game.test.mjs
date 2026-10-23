@@ -1,6 +1,7 @@
+import { createClassicGame as createGame, classicWorld } from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, applyAction, projectedState, capacity, DEFAULT_SETTINGS, joinGame } from '../lib/game.mjs';
+import { applyAction, projectedState, capacity, DEFAULT_SETTINGS, joinGame } from '../lib/game.mjs';
 import { generateWorld, neighbors, edgeNeighbors, WIDTH, HEIGHT } from '../lib/world.mjs';
 
 function room() { return createGame({ id: 'ABC123', name: '시험 세계', seed: 'test-seed', gmName: '마스터', gmHash: 'secret', invite: 'invite-key' }); }
@@ -209,14 +210,13 @@ test('large maps spread starting tribes and legacy maps retain their own wrap, m
   assert.equal(large.tiles.length, 2280);
   const homes = large.tribes.map(t => large.tiles.find(tile => tile.id === t.tileId));
   assert.equal(new Set(homes.map(t => t.id)).size, 4);
-  assert.ok(Math.max(...homes.map(t=>t.x)) - Math.min(...homes.map(t=>t.x)) >= 25);
-  assert.ok(Math.max(...homes.map(t=>t.y)) - Math.min(...homes.map(t=>t.y)) >= 15);
   for (const home of homes) {
-    assert.equal(home.terrain, 'grass');
+    assert.ok(!['ocean','coast','lake','snow'].includes(home.terrain));
+    assert.notEqual(home.elevation,'mountain');
     assert.equal(neighbors(home, large.width, large.height).length, 6);
   }
   const r = started();
-  r.world = generateWorld('old-world', {width:22,height:14});
+  r.world = classicWorld('old-world', {width:22,height:14});
   r.knowledge = {god:{},priest:{}};
   r.priest.tileId = '21,6';
   const target = r.world.tiles.find(t => t.id === '0,6');

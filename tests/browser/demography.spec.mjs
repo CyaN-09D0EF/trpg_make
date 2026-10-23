@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createGame, applyAction } from '../../lib/game.mjs';
-import { generateWorld } from '../../lib/world.mjs';
+import { applyAction } from '../../lib/game.mjs';
+import { createClassicGame as createGame, classicWorld as generateWorld } from '../fixtures.mjs';
 
 test('birth reference, GM rates and housing policies drive monthly births and survive export',async({page,browser,request},testInfo)=>{
   const campaign=createGame({id:'BIR123',name:'출생 기록',seed:'birth-ui',gmName:'GM',gmHash:'old',invite:'old'});

@@ -1,8 +1,9 @@
+import { createClassicGame as createGame } from './fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { POPULATION_TRAITS_V03, traitsOf, ageSummary, applyMonthlyAging, naturalDeathProbability, reconcileAges } from '../lib/lifecycle.mjs';
 import { applyMonthlyBirths, birthForecast } from '../lib/demography.mjs';
-import { createGame, applyAction, projectedState } from '../lib/game.mjs';
+import { applyAction, projectedState } from '../lib/game.mjs';
 import { restoreCampaign } from '../lib/campaign.mjs';
 import { rngFor } from '../lib/world.mjs';
 

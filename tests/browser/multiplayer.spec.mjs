@@ -7,6 +7,10 @@ test('three independent browsers play one persistent campaign with private visio
   await expect(gm.getByRole('heading',{name:/당신의 한 수가/})).toBeVisible();
   await gm.screenshot({path:testInfo.outputPath('landing.png'),fullPage:true});
   await gm.getByRole('button',{name:/새로운 세계 만들기/}).click();
+  await gm.locator('.generation-rules summary').click();
+  await expect(gm.locator('.generation-rules li')).toHaveCount(17);
+  await expect(gm.locator('.generation-rules')).toContainText('깊은뿌리 부족');
+  await gm.locator('.generation-rules summary').click();
   await gm.getByLabel('세계의 이름').fill('별을 품은 여명');
   await gm.getByLabel('GM 이름').fill('이야기꾼');
   await gm.getByRole('button',{name:/세계의 첫 장 열기/}).click();
@@ -50,7 +54,7 @@ test('three independent browsers play one persistent campaign with private visio
   await god.getByRole('button',{name:/신의 권능/}).click();await god.getByLabel('어떤 변화를 일으키나요?').fill('곤충이 풀을 먹게 하여 사슴의 이동을 유도한다.');await god.getByRole('button',{name:'GM에게 행동 제안하기'}).click();
   await gm.getByRole('button',{name:/행동 판정/}).click();await gm.getByRole('button',{name:'판정하기 →'}).click();await gm.getByLabel('신앙 비용').fill('2');await gm.getByLabel('결과와 변화').fill('작은 기적이 시작되었다. 동물의 이동은 GM이 관찰한다.');await gm.getByRole('button',{name:'판정 확정'}).click();
   await expect(god.locator('.stat').filter({hasText:'신앙'}).locator('.stat-value')).toContainText('8');
-  await priest.getByRole('button',{name:/노동력 배치/}).click();await priest.getByLabel('농경',{exact:true}).fill('30');await priest.getByRole('button',{name:'노동 배치 저장'}).click();
+  await priest.getByRole('button',{name:/노동력 배치/}).click();await priest.getByLabel('농경',{exact:true}).fill('20');await priest.getByRole('button',{name:'노동 배치 저장'}).click();
   await gm.getByRole('button',{name:/시간 진행/}).click();await gm.getByRole('button',{name:'시간 진행 확정'}).click();
   await expect(priest.locator('.date-badge')).toContainText('2개월 차');
   await expect(gm.locator('.log-list')).toContainText('월말 정산');
