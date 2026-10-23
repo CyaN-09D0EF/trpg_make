@@ -59,6 +59,7 @@ test('import API validates files, creates separate rooms, rotates keys, allows r
     r=>{r.actions[0].status='invalid';},
     r=>{r.settings.workerOutput=-1;},
     r=>{r.world.tiles[0].river=[8];},
+    r=>{r.world.tiles[0].altitude=-1;},
     r=>{r.world.tribes[0].technologies=[{name:'bad',stage:9}];},
     r=>{r.world.tribes[0].tileId='missing';},
     r=>{r.logs[0].audience='intruder';},
