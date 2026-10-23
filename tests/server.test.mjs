@@ -75,6 +75,18 @@ test('static routes expose only public files and reject foreign-origin mutations
   t.after(async()=>{await app.close();await rm(dir,{recursive:true,force:true});});
   assert.equal((await fetch(base+'/')).status,200);
   assert.equal((await fetch(base+'/r/ABC123')).status,200);
+  const rulebook=await fetch(base+'/rulebook.md');
+  assert.equal(rulebook.status,200);assert.match(rulebook.headers.get('content-type'),/text\/html/);
+  assert.ok((await rulebook.text()).includes('class="rulebook-chapter"'));
+  const raw=await fetch(base+'/rulebook.md?raw=1');
+  assert.match(raw.headers.get('content-type'),/text\/plain/);
+  assert.equal(await raw.text(),await readFile(new URL('../docs/rulebook.md',import.meta.url),'utf8'));
+  assert.equal((await fetch(base+'/rulebook')).status,200);
+  const head=await fetch(base+'/rulebook.md',{method:'HEAD'});
+  assert.equal(head.status,200);assert.equal(await head.text(),'');
+  assert.equal((await fetch(base+'/katex/katex.min.css')).status,200);
+  assert.equal((await fetch(base+'/katex/fonts/KaTeX_Main-Regular.woff2')).status,200);
+  assert.equal((await fetch(base+'/katex/package.json')).status,404);
   assert.equal((await fetch(base+'/server.mjs')).status,404);
   assert.equal((await fetch(base+'/data/ABC123.json')).status,404);
   const malformed=await fetch(base+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:'null'});
